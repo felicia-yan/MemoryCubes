@@ -39,6 +39,8 @@ namespace TryAR.MarkerTracking
         [SerializeField] MeshRenderer m_debugRenderer;
 
         public static Dictionary<int, GameObject> m_markerGameObjectDictionary = new Dictionary<int, GameObject>();
+        public static Dictionary<int, Vector3> m_markerRawPositionDictionary = new Dictionary<int, Vector3>();
+
        
         private Texture2D m_resultTexture;
 
@@ -155,6 +157,9 @@ namespace TryAR.MarkerTracking
             // Step 2: Estimate the pose of markers and position 3D objects accordingly
             // This maps the 2D marker positions to 3D space using the camera parameters
             m_arucoMarkerTracking.EstimatePoseCanonicalMarker(m_markerGameObjectDictionary, m_cameraAnchor);
+
+            // Sync raw positions for gesture detection (unsmoothed, for shake detection)
+            m_markerRawPositionDictionary = m_arucoMarkerTracking.RawMarkerPositions; 
         }
 
         /// <summary>

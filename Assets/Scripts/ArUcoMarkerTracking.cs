@@ -97,6 +97,12 @@ namespace TryAR.MarkerTracking
         private Dictionary<int, PoseData> _prevPoseDataDictionary = new Dictionary<int, PoseData>();
 
         /// <summary>
+        /// Raw (unsmoothed) world-space positions per marker ID, captured before the low-pass filter
+        /// is applied. Exposed so gesture detection can read true velocity without filter interference.
+        /// </summary>
+        public Dictionary<int, Vector3> RawMarkerPositions { get; private set; } = new Dictionary<int, Vector3>();
+
+        /// <summary>
         /// Temporary Texture2D for converting camera texture to OpenCV Mat.
         /// </summary>
         private Texture2D m_cameraTexture;
@@ -259,8 +265,6 @@ namespace TryAR.MarkerTracking
                     Objdetect.drawDetectedMarkers(_processingRgbMat, _detectedMarkerCorners, _detectedMarkerIds, new Scalar(0, 255, 0));
                 }
                         
-                 
-
                 // Update result texture for visualization
                 if (resultTexture != null)
                 {
@@ -270,7 +274,9 @@ namespace TryAR.MarkerTracking
         }
 
         /// <summary>
-        /// Estimate pose for each detected marker and update corresponding game objects
+        /// Estimate pose for each detected marker and update corresponding game objects.
+        /// Raw world-space positions are stored in RawMarkerPositions before smoothing is applied,
+        /// so gesture detection can read unfiltered velocity.
         /// </summary>
         /// <param name="arObjects">Dictionary mapping marker IDs to game objects</param>
         /// <param name="camTransform">Camera transform for world-space positioning</param>
@@ -315,6 +321,12 @@ namespace TryAR.MarkerTracking
                         translationVec.get(0, 0, tvecArr);
                         PoseData poseData = ARUtils.ConvertRvecTvecToPoseData(rvecArr, tvecArr);
 
+                        // Convert raw pose to world space and store it BEFORE smoothing.
+                        // GestureDetection reads this to compute unfiltered velocity for shake detection.
+                        var rawMatrix = ARUtils.ConvertPoseDataToMatrix(ref poseData, true);
+                        rawMatrix = camTransform.localToWorldMatrix * rawMatrix;
+                        RawMarkerPositions[currentMarkerId] = new Vector3(rawMatrix.m03, rawMatrix.m13, rawMatrix.m23);
+
                         // Get previous pose for this marker (or create new)
                         if (!_prevPoseDataDictionary.TryGetValue(currentMarkerId, out PoseData prevPose))
                         {
@@ -337,7 +349,7 @@ namespace TryAR.MarkerTracking
                         // Store current pose for next frame
                         _prevPoseDataDictionary[currentMarkerId] = poseData;
 
-                        // Convert pose to matrix and apply to game object
+                        // Convert smoothed pose to matrix and apply to game object
                         var arMatrix = ARUtils.ConvertPoseDataToMatrix(ref poseData, true);
                         arMatrix = camTransform.localToWorldMatrix * arMatrix;
                         ARUtils.SetTransformFromMatrix(targetObject.transform, ref arMatrix);
@@ -347,8 +359,8 @@ namespace TryAR.MarkerTracking
                         targetObject.transform.position -= targetObject.transform.forward * depthOffset;
                     }
                 }
-
-                // Optional feature to deactivate objects for markers that weren't detected
+            }
+            // Optional feature to deactivate objects for markers that weren't detected
                 // (Use only if required by your application)
                 // foreach (var kvp in arObjects)
                 // {
@@ -372,7 +384,6 @@ namespace TryAR.MarkerTracking
                 //         obj.SetActive(false);
                 //     }
                 // }
-            }
         }
 
         /// <summary>

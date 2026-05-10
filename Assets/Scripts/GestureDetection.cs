@@ -25,11 +25,12 @@ public class GestureDetection : MonoBehaviour
 
         public bool isTouched;
 
-        // Shake detection
+        // Shake detection — uses raw (unsmoothed) position to avoid filter killing velocity reversals
+        public Vector3 lastRawPosition;
+        public Vector3 rawVelocity;
         public int shakeDirectionChanges;
         public float shakeTimer;
-        public Vector3 lastVelocity; 
-
+        public Vector3 lastRawVelocity;
 
         // Spin detection
         public float spinTimer;
@@ -45,8 +46,6 @@ public class GestureDetection : MonoBehaviour
 
 
     [SerializeField] float touchThreshold = 0.2f;
-    // [SerializeField] public OVRHand leftHand;
-    // [SerializeField] public OVRHand rightHand; 
     [SerializeField] public OVRSkeleton leftSkeleton;
     [SerializeField] public OVRSkeleton rightSkeleton; 
     private Vector3 leftHandPos; 
@@ -59,6 +58,8 @@ public class GestureDetection : MonoBehaviour
     private Coroutine fadeRoutine;
 
     [SerializeField] private TextMeshProUGUI debugText; 
+
+    [SerializeField] private ReminderManager reminderManager;
 
     void Start()
     {
@@ -103,7 +104,8 @@ public class GestureDetection : MonoBehaviour
                     transform = cubeObj.transform,
                     lastPosition = cubeObj.transform.position,
                     lastRotation = cubeObj.transform.rotation,
-                    lastVelocity = Vector3.zero
+                    lastRawPosition = cubeObj.transform.position,
+                    lastRawVelocity = Vector3.zero
                 };
             }
             else
@@ -169,8 +171,7 @@ public class GestureDetection : MonoBehaviour
 
         bool anyTouched = touchedCubeIDs.Count > 0;
         SetDim(anyTouched);
-
-        debugText.text = $"Touched: {string.Join(", ", touchedCubeIDs)}"; 
+        // debugText.text = $"Touched: {string.Join(", ", touchedCubeIDs)}"; 
     }
 
     // Show outline on touched cubes
@@ -200,25 +201,6 @@ public class GestureDetection : MonoBehaviour
             renderer.materials = new Material[] { mats[0] };
         }
     }
-
-    // public void GetTouchedCubeIDs() {
-    //     foreach (int id in _detectedIDs) {
-    //         Vector3 cubePos = _cubes[id].transform.position; //
-    //         // Check if either hand is within close distance to that cube's position
-    //         if (Vector3.Distance(rightHandPos, cubePos) < touchThreshold || 
-    //         Vector3.Distance(leftHandPos, cubePos) < touchThreshold) {
-    //             if (!touchedCubeIDs.Contains(id)) {
-    //                 touchedCubeIDs.Add(id); 
-    //                 _cubes[id].isTouched = true;
-    //             }
-    //         } else {
-    //             if (touchedCubeIDs.Contains(id)) {
-    //                 touchedCubeIDs.Remove(id); 
-    //                 _cubes[id].isTouched = false;
-    //             }
-    //         }
-    //     }
-    // }
     
     // Fade to darker camera overlay effect on cube focus
     public void SetDim(bool dim) {
@@ -252,39 +234,51 @@ public class GestureDetection : MonoBehaviour
             CubeState cube = _cubes[id];
             Transform t = cube.transform;
 
-            // Linear velocity
+            // Smoothed velocity — used for spin (angular) and anything that benefits from stability
             cube.velocity = (t.position - cube.lastPosition) / Time.deltaTime;
 
-            // Angular velocity
-            Quaternion delta =
-                t.rotation * Quaternion.Inverse(cube.lastRotation);
-
+            // Angular velocity (from smoothed rotation is fine — spin is sustained, not abrupt)
+            Quaternion delta = t.rotation * Quaternion.Inverse(cube.lastRotation);
             delta.ToAngleAxis(out float angle, out Vector3 axis);
-
             if (angle > 180f) angle -= 360f;
-
             cube.angularVelocity = axis * angle * Mathf.Deg2Rad / Time.deltaTime;
+
             cube.lastPosition = t.position;
             cube.lastRotation = t.rotation;
-            
+
+            // Raw velocity — pulled from the coordinator's unsmoothed pose, used for shake detection.
+            // The smoothing filter in ArUcoMarkerTracking blurs rapid direction reversals, which
+            // is exactly the signal shake detection relies on, so we bypass it here.
+            if (ArUcoTrackingAppCoordinator.m_markerRawPositionDictionary != null &&
+                ArUcoTrackingAppCoordinator.m_markerRawPositionDictionary.TryGetValue(id, out Vector3 rawPos))
+            {
+                cube.rawVelocity = (rawPos - cube.lastRawPosition) / Time.deltaTime;
+                cube.lastRawPosition = rawPos;
+            }
+            else
+            {
+                // Fallback: if raw positions aren't exposed yet, use smoothed velocity.
+                // Shake detection will be less sensitive but won't break.
+                cube.rawVelocity = cube.velocity;
+                cube.lastRawPosition = t.position;
+            }
         }
     }   
 
     // GESTURES ------------------------------------------------------------------
     // ---------------------------------------------------------------------------
     void DetectShake(int id, CubeState cube) {
-        Vector3 velocity = cube.velocity;
+        // Use raw velocity so the pose smoothing filter doesn't suppress direction reversals
+        Vector3 velocity = cube.rawVelocity;
 
         float speed = velocity.magnitude;
 
         if (speed < 0.5f) return;
 
-        if (speed >= 0.5f) {
-            float dot = Vector3.Dot(velocity.normalized, cube.lastVelocity.normalized);
-            if (dot < -0.6f)
-                cube.shakeDirectionChanges++;
-            cube.lastVelocity = velocity;
-        }
+        float dot = Vector3.Dot(velocity.normalized, cube.lastRawVelocity.normalized);
+        if (dot < -0.6f)
+            cube.shakeDirectionChanges++;
+        cube.lastRawVelocity = velocity;
 
         cube.shakeTimer += Time.deltaTime;
 
@@ -292,6 +286,7 @@ public class GestureDetection : MonoBehaviour
             if (cube.shakeDirectionChanges >= 3) {
                 Debug.Log($"Cube {id} SHAKE");
                 debugText.text = $"Cube {id} SHAKE DETECTED!";
+                reminderManager.CreateReminder(id);
             }
 
             cube.shakeDirectionChanges = 0;
