@@ -51,6 +51,14 @@ public class AnchorsManager : MonoBehaviour
         SetupAnchorAsync(go.AddComponent<OVRSpatialAnchor>(), saveAnchor: true);
     }
 
+    // Version of CreateAnchor that takes position and rotation arguments 
+    public OVRSpatialAnchor CreateAnchorAt(Vector3 position, Quaternion rotation) {
+        var go = Instantiate(_saveableAnchorPrefab, position, rotation);
+        var anchor = go.AddComponent<OVRSpatialAnchor>();
+        SetupAnchorAsync(anchor, saveAnchor: true);
+        return anchor;
+    }
+
     // Destroys all runtime anchors, but remains in saved storage
     public void DestroyRuntimeAnchors() {
         foreach (var anchor in _anchorInstances)

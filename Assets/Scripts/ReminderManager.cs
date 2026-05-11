@@ -26,7 +26,7 @@ public class ReminderManager : MonoBehaviour
     [SerializeField] private GameObject reminderPrefab;
 
     // How far above the cube's position the panel floats (meters, world space)
-    [SerializeField] private float heightOffset = 0.05f;
+    [SerializeField] private float heightOffset = 0.8f;
 
     // Active reminder instances, keyed by cube ID
     private Dictionary<int, GameObject> activeReminders = new Dictionary<int, GameObject>();
@@ -82,7 +82,7 @@ public class ReminderManager : MonoBehaviour
         Reminder data = new Reminder
         {
             cubeId = cubeId,
-            task   = "New reminder",
+            task   = "placeholder reminder text",
             time   = DateTime.Now,
             icon   = null
         };
@@ -98,6 +98,10 @@ public class ReminderManager : MonoBehaviour
 
         GameObject panel = Instantiate(reminderPrefab, spawnPos, Quaternion.identity);
         activeReminders[cubeId] = panel;
+
+        // Force UI to appear on top of passthrough layer
+        Canvas canvas = panel.GetComponent<Canvas>();
+        canvas.sortingOrder = 10;
 
         ApplyDataToPanel(panel, data);
 
@@ -135,6 +139,11 @@ public class ReminderManager : MonoBehaviour
         Debug.Log($"ReminderManager: Deleted reminder for cube {cubeId}");
     }
 
+    public bool HasReminder(int cubeId)
+    {
+        return activeReminders.ContainsKey(cubeId) && activeReminders[cubeId] != null;
+    }
+
     // ---------------------------------------------------------------------------
     // Internal helpers
     // ---------------------------------------------------------------------------
@@ -152,7 +161,7 @@ public class ReminderManager : MonoBehaviour
     private void ApplyDataToPanel(GameObject panel, Reminder data)
     {
         // Task label
-        Transform taskObj = panel.transform.Find("Background/TaskText");
+        Transform taskObj = panel.transform.Find("CanvasRoot/Background/TaskText");
         if (taskObj != null)
         {
             var tmp = taskObj.GetComponent<TextMeshProUGUI>();
@@ -160,7 +169,7 @@ public class ReminderManager : MonoBehaviour
         }
 
         // Time label
-        Transform timeObj = panel.transform.Find("Background/TimeText");
+        Transform timeObj = panel.transform.Find("CanvasRoot/Background/TimeText");
         if (timeObj != null)
         {
             var tmp = timeObj.GetComponent<TextMeshProUGUI>();
@@ -170,7 +179,7 @@ public class ReminderManager : MonoBehaviour
         // Icon (optional — skipped if no sprite assigned)
         if (data.icon != null)
         {
-            Transform iconObj = panel.transform.Find("Background/IconImage");
+            Transform iconObj = panel.transform.Find("CanvasRoot/Background/IconImage");
             if (iconObj != null)
             {
                 var img = iconObj.GetComponent<Image>();

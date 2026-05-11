@@ -31,6 +31,7 @@ public class GestureDetection : MonoBehaviour
         public int shakeDirectionChanges;
         public float shakeTimer;
         public Vector3 lastRawVelocity;
+        public float touchHeldTime;
 
         // Spin detection
         public float spinTimer;
@@ -59,7 +60,10 @@ public class GestureDetection : MonoBehaviour
 
     [SerializeField] private TextMeshProUGUI debugText; 
 
+    // Creating reminders
     [SerializeField] private ReminderManager reminderManager;
+    private HashSet<int> _anchoredCubeIDs = new HashSet<int>();
+    private Dictionary<int, OVRSpatialAnchor> _cubeAnchors = new Dictionary<int, OVRSpatialAnchor>();
 
     void Start()
     {
@@ -93,10 +97,8 @@ public class GestureDetection : MonoBehaviour
         {
             int id = kvp.Key;
             GameObject cubeObj = kvp.Value;
-
             _detectedIDs.Add(id);
 
-            // Initialize cube state once
             if (!_cubes.ContainsKey(id))
             {
                 _cubes[id] = new CubeState
@@ -110,14 +112,30 @@ public class GestureDetection : MonoBehaviour
             }
             else
             {
-                // Update transform in case object changed
+                // If anchored, drive the cube's GameObject position from the anchor
+               if (_cubeAnchors.TryGetValue(id, out OVRSpatialAnchor anchor) && anchor != null && anchor.Localized) {
+                    // Drive BOTH the GameObject and the cached transform from the anchor
+                    cubeObj.transform.position = anchor.transform.position;
+                    cubeObj.transform.rotation = anchor.transform.rotation;
+                    _cubes[id].transform = cubeObj.transform;  // keep in sync
+               } else {
                 _cubes[id].transform = cubeObj.transform;
+               }
             }
         }
+        
     }
 
     // Get IDs of cubes currently detected on camera
     void UpdateTouchedCubes() {
+        // Detect if cubes were placed down and released
+        List<int> previouslyTouched = new List<int>(touchedCubeIDs);
+        foreach (int id in previouslyTouched) {
+            if (!touchedCubeIDs.Contains(id)) { // was touched, now released
+                _cubes[id].touchHeldTime = 0f;
+            }
+        }
+
         foreach (int id in _detectedIDs)
             _cubes[id].isTouched = false;
         touchedCubeIDs.Clear();
@@ -162,17 +180,66 @@ public class GestureDetection : MonoBehaviour
             }
         }
 
-        // Update visuals
+        foreach (int id in _detectedIDs) {
+            if (_cubes[id].isTouched && !previouslyTouched.Contains(id)) {
+                _anchoredCubeIDs.Remove(id);
+                _cubeAnchors.Remove(id);
+            }
+        }
+        // If cube was released, place spatial anchor there for stable pos
+        foreach (int id in previouslyTouched) {
+            if (!touchedCubeIDs.Contains(id) && !_anchoredCubeIDs.Contains(id)) {
+                // Destroy old anchor if one exists
+                if (_cubeAnchors.TryGetValue(id, out OVRSpatialAnchor old) && old != null)
+                    Destroy(old.gameObject);
+                
+                var anchor = AnchorsManager.Instance.CreateAnchorAt(
+                    _cubes[id].transform.position, 
+                    _cubes[id].transform.rotation);
+                _cubeAnchors[id] = anchor;
+                _anchoredCubeIDs.Add(id);
+            }
+        }
+
+        // Update outline
         foreach (var kvp in ArUcoTrackingAppCoordinator.m_markerGameObjectDictionary) {
             int id = kvp.Key;
             if (_cubes.ContainsKey(id))
                 SetOutline(kvp.Value, _cubes[id].isTouched);
         }
 
+        // Hide cube altogether if not touched or no active reminder
+        foreach (int id in _detectedIDs) {
+            bool touched = _cubes[id].isTouched;
+    
+            // Show/hide the cube mesh
+            GameObject cubeObj = ArUcoTrackingAppCoordinator.m_markerGameObjectDictionary[id];
+            Transform cubeChild = cubeObj.transform.Find("Cube");
+            if (cubeChild != null)
+                cubeChild.GetComponent<MeshRenderer>().enabled = touched;
+        }
+
         bool anyTouched = touchedCubeIDs.Count > 0;
         SetDim(anyTouched);
         // debugText.text = $"Touched: {string.Join(", ", touchedCubeIDs)}"; 
     }
+
+    // // Helper function, used to place anchor when cube is released
+    // void PlaceAnchorAtCube(int id) {
+    //     if (!_cubes.ContainsKey(id)) return;
+    //     if (AnchorsManager.Instance == null) {
+    //         Debug.LogWarning("AnchorsManager instance not found");
+    //         return;
+    //     }
+
+    //     // Temporarily move the anchor's spawn transform to the cube's position
+    //     Transform spawnTransform = AnchorsManager.Instance.GetSpawnTransform();
+    //     Vector3 cubePos = _cubes[id].transform.position;
+    //     Quaternion cubeRot = _cubes[id].transform.rotation;
+
+    //     AnchorsManager.Instance.CreateAnchorAt(cubePos, cubeRot);
+    //     Debug.Log($"Placed anchor for cube {id} at {cubePos}");
+    // }
 
     // Show outline on touched cubes
     void SetOutline(GameObject cube, bool show) {
@@ -204,7 +271,7 @@ public class GestureDetection : MonoBehaviour
     
     // Fade to darker camera overlay effect on cube focus
     public void SetDim(bool dim) {
-        float targetBrightness = dim ? -0.9f : 0f; // -1f is fully black
+        float targetBrightness = dim ? -0.6f : 0f; // -1f is fully black
 
         if (fadeRoutine != null)
             StopCoroutine(fadeRoutine);
@@ -268,12 +335,19 @@ public class GestureDetection : MonoBehaviour
     // GESTURES ------------------------------------------------------------------
     // ---------------------------------------------------------------------------
     void DetectShake(int id, CubeState cube) {
+        if (cube.touchHeldTime < 0.3f) {
+            cube.touchHeldTime += Time.deltaTime;
+            cube.shakeDirectionChanges = 0;
+            cube.shakeTimer = 0f;
+            return;
+        }
+
         // Use raw velocity so the pose smoothing filter doesn't suppress direction reversals
         Vector3 velocity = cube.rawVelocity;
 
         float speed = velocity.magnitude;
 
-        if (speed < 0.5f) return;
+        if (speed < 1.0f) return;
 
         float dot = Vector3.Dot(velocity.normalized, cube.lastRawVelocity.normalized);
         if (dot < -0.6f)
@@ -283,12 +357,19 @@ public class GestureDetection : MonoBehaviour
         cube.shakeTimer += Time.deltaTime;
 
         if (cube.shakeTimer > 0.5f) {
-            if (cube.shakeDirectionChanges >= 3) {
-                Debug.Log($"Cube {id} SHAKE");
+            if (cube.shakeDirectionChanges >= 5) {
                 debugText.text = $"Cube {id} SHAKE DETECTED!";
-                reminderManager.CreateReminder(id);
+                
+                bool reminderExists = reminderManager.HasReminder(id);
+                if (reminderExists) {
+                    // reminderManager.DeleteReminder(id);
+                    // debugText.text = $"deleting reminder for cube {id}";
+                }
+                else {
+                    reminderManager.CreateReminder(id);
+                    debugText.text = $"creating reminder for cube {id}";
+                }
             }
-
             cube.shakeDirectionChanges = 0;
             cube.shakeTimer = 0f;
         }
@@ -311,5 +392,4 @@ public class GestureDetection : MonoBehaviour
             cube.spinTimer = 0f;
         }
     }   
-
 }
