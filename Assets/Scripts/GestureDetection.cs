@@ -1,6 +1,7 @@
 // GestureDetection - detect user hand gestures with cubes (e.g. shake, spin, stack) to trigger interactions
 
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Collections;
 using Meta.XR;
@@ -65,6 +66,44 @@ public class GestureDetection : MonoBehaviour
     private HashSet<int> _anchoredCubeIDs = new HashSet<int>();
     private Dictionary<int, OVRSpatialAnchor> _cubeAnchors = new Dictionary<int, OVRSpatialAnchor>();
 
+    // Grouping cubes into routines
+    public enum GroupType
+    {
+        Ordered,
+        Unordered
+    }
+
+    [System.Serializable]
+    public class CubeGroup
+    {
+        public int groupID;
+        // all cubes in group
+        public HashSet<int> cubeIDs = new HashSet<int>();
+        // ordered representation
+        public List<int> orderedIDs = new List<int>();
+        public GroupType type;
+        public GameObject groupUI;
+    }
+
+
+    [Header("Forming Routines")]
+    [SerializeField] private float combineDistance = 0.12f;
+    [SerializeField] private float disconnectDistance = 0.25f;
+    [SerializeField] private GameObject groupUIPrefab;
+
+    private Dictionary<int, CubeGroup> cubeToGroup = new();
+    private Dictionary<int, CubeGroup> groups = new();
+
+    private int nextGroupID = 1;
+
+    private int lastTouchedCube = -1;
+
+    private HashSet<int> completedOrderedTasks = new();
+
+    // For testing purposes, possible tasks
+    private List<string> tasks = new List<string> { "Take a walk", "Brush my teeth", "Vacuum", "Take my medication" };
+
+
     void Start()
     {
         SetDim(false); 
@@ -76,6 +115,9 @@ public class GestureDetection : MonoBehaviour
         UpdateDetectedIDs(); 
         UpdateCubeMotion(); 
         UpdateTouchedCubes(); 
+
+        HandleCubeGrouping();
+        HandleOrderedTraversalUpdate();
 
         // Check for gesture detections for touched cubes
         foreach (int id in _detectedIDs) {
@@ -361,13 +403,30 @@ public class GestureDetection : MonoBehaviour
                 debugText.text = $"Cube {id} SHAKE DETECTED!";
                 
                 bool reminderExists = reminderManager.HasReminder(id);
-                if (reminderExists) {
-                    // reminderManager.DeleteReminder(id);
-                    // debugText.text = $"deleting reminder for cube {id}";
+
+                if (reminderExists)
+                {
+                    reminderManager.DeleteReminder(id);
+
+                    debugText.text =
+                        $"Deleted reminder for cube {id}";
                 }
-                else {
-                    reminderManager.CreateReminder(id);
-                    debugText.text = $"creating reminder for cube {id}";
+                else
+                {
+                    int task_idx = UnityEngine.Random.Range(0, tasks.Count);
+                    string task = tasks[task_idx]; 
+                    // Temporary placeholder until voice input is connected
+                    reminderManager.CreateReminder(
+                        id,
+                        task,
+                        DateTime.Now.AddMinutes(1),
+                        "none");
+
+                    debugText.text =
+                        $"Created reminder for cube {id}";
+
+                    // voiceReminderController.currentCubeId = id;
+                    // voiceExperience.Activate();
                 }
             }
             cube.shakeDirectionChanges = 0;
@@ -392,4 +451,335 @@ public class GestureDetection : MonoBehaviour
             cube.spinTimer = 0f;
         }
     }   
+
+    // =====================================================
+    // GROUPING INTO ROUTINES
+    // =====================================================
+
+    void HandleCubeGrouping() {
+        // -------------------------------------------------
+        // COMBINE
+        // -------------------------------------------------
+
+        for (int i = 0; i < touchedCubeIDs.Count; i++) {
+            for (int j = i + 1; j < touchedCubeIDs.Count; j++) {
+                int idA = touchedCubeIDs[i];
+                int idB = touchedCubeIDs[j];
+
+                float dist = Vector3.Distance(
+                    _cubes[idA].transform.position,
+                    _cubes[idB].transform.position);
+
+                bool cubeAHasTask = reminderManager.HasReminder(idA);
+                bool cubeBHasTask = reminderManager.HasReminder(idB);
+
+                if (!cubeAHasTask || !cubeBHasTask)
+                    continue;
+
+                if (dist < combineDistance) {
+                    CombineCubes(idA, idB);
+                }
+            }
+        }
+
+        // -------------------------------------------------
+        // DISCONNECT
+        // -------------------------------------------------
+
+        List<(int,int)> disconnects = new();
+
+        foreach (var group in groups.Values) {
+            List<int> ids = group.cubeIDs.ToList();
+
+            for (int i = 0; i < ids.Count; i++) {
+                for (int j = i + 1; j < ids.Count; j++) {
+                    int idA = ids[i];
+                    int idB = ids[j];
+
+                    bool touching =
+                        _cubes[idA].isTouched ||
+                        _cubes[idB].isTouched;
+
+                    if (!touching)
+                        continue;
+
+                    float dist = Vector3.Distance(
+                        _cubes[idA].transform.position,
+                        _cubes[idB].transform.position);
+
+                    if (dist > disconnectDistance)
+                    {
+                        disconnects.Add((idA, idB));
+                    }
+                }
+            }
+        }
+
+        foreach (var pair in disconnects) {
+            DisconnectCubePair(pair.Item1, pair.Item2);
+        }
+    }
+    void CombineCubes(int idA, int idB) {
+        if (!reminderManager.HasReminder(idA) || !reminderManager.HasReminder(idB)) {
+            return;
+        }
+        CubeGroup groupA = cubeToGroup.ContainsKey(idA)
+            ? cubeToGroup[idA]
+            : null;
+
+        CubeGroup groupB = cubeToGroup.ContainsKey(idB)
+            ? cubeToGroup[idB]
+            : null;
+
+        // already same group
+        if (groupA != null && groupA == groupB)
+            return;
+
+        if (groupA == null && groupB == null)
+        {
+            CubeGroup newGroup = new CubeGroup();
+
+            newGroup.groupID = nextGroupID++;
+
+            newGroup.cubeIDs.Add(idA);
+            newGroup.cubeIDs.Add(idB);
+
+            groups[newGroup.groupID] = newGroup;
+
+            cubeToGroup[idA] = newGroup;
+            cubeToGroup[idB] = newGroup;
+
+            UpdateGroupSemantics(newGroup);
+
+            CreateGroupUI(newGroup);
+
+            Debug.Log($"Created Group {newGroup.groupID}");
+            foreach (int id in newGroup.cubeIDs) {
+                reminderManager.SetCubeGrouped(id, true);
+            }
+
+            return;
+        }
+
+        if (groupA != null && groupB == null)
+        {
+            groupA.cubeIDs.Add(idB);
+
+            cubeToGroup[idB] = groupA;
+
+            UpdateGroupSemantics(groupA);
+
+            RefreshGroupUI(groupA);
+
+            Debug.Log($"Added cube {idB} to group {groupA.groupID}");
+            foreach (int id in groupA.cubeIDs) {
+                reminderManager.SetCubeGrouped(id, true);
+            }
+
+            return;
+        }
+
+        if (groupB != null && groupA == null)
+        {
+            groupB.cubeIDs.Add(idA);
+
+            cubeToGroup[idA] = groupB;
+
+            UpdateGroupSemantics(groupB);
+
+            RefreshGroupUI(groupB);
+
+            Debug.Log($"Added cube {idA} to group {groupB.groupID}");
+
+            return;
+        }
+
+        foreach (int id in groupB.cubeIDs)
+        {
+            groupA.cubeIDs.Add(id);
+
+            cubeToGroup[id] = groupA;
+        }
+        groups.Remove(groupB.groupID);
+
+        if (groupB.groupUI != null)
+            Destroy(groupB.groupUI);
+
+        UpdateGroupSemantics(groupA);
+        RefreshGroupUI(groupA);
+        foreach (int id in groupA.cubeIDs) {
+            reminderManager.SetCubeGrouped(id, true);
+        }
+
+        Debug.Log($"Merged groups into {groupA.groupID}");
+        foreach (int id in groupA.cubeIDs) {
+            reminderManager.SetCubeGrouped(id, true);
+        }
+    }
+
+    void DisconnectCubePair(int idA, int idB) {
+        if (!cubeToGroup.ContainsKey(idA))
+            return;
+
+        CubeGroup originalGroup = cubeToGroup[idA];
+        if (!originalGroup.cubeIDs.Contains(idB))
+            return;
+        if (originalGroup.cubeIDs.Count <= 1)
+            return;
+
+        // remove cube
+        originalGroup.cubeIDs.Remove(idB);
+        // create singleton group
+        CubeGroup newGroup = new CubeGroup();
+        newGroup.groupID = nextGroupID++;
+        newGroup.cubeIDs.Add(idB);
+        groups[newGroup.groupID] = newGroup;
+        cubeToGroup[idB] = newGroup;
+        reminderManager.SetCubeGrouped(idB, false);
+
+        UpdateGroupSemantics(originalGroup);
+        UpdateGroupSemantics(newGroup);
+
+        CreateGroupUI(newGroup);
+        RefreshGroupUI(originalGroup);
+        if (originalGroup.cubeIDs.Count == 1) {
+            int remaining = originalGroup.cubeIDs.First();
+            reminderManager.SetCubeGrouped(remaining, false);
+        }
+
+        Debug.Log($"Disconnected cube {idB}");
+    }
+
+
+    // =====================================================
+    // GROUP SEMANTICS
+    // =====================================================
+
+    void UpdateGroupSemantics(CubeGroup group) {
+        group.type = DetectGroupType(group);
+
+        if (group.type == GroupType.Ordered)
+        {
+            group.orderedIDs = BuildVerticalOrdering(group.cubeIDs);
+        }
+        else
+        {
+            group.orderedIDs = group.cubeIDs.ToList();
+        }
+    }
+
+    GroupType DetectGroupType(CubeGroup group) {
+        if (group.cubeIDs.Count < 2)
+            return GroupType.Unordered;
+
+        List<int> ids = group.cubeIDs.ToList();
+
+        Vector3 first = _cubes[ids[0]].transform.position;
+        Vector3 last = _cubes[ids[ids.Count - 1]].transform.position;
+
+        Vector3 dir = (last - first).normalized;
+
+        float vertical = Mathf.Abs(Vector3.Dot(dir, Vector3.up));
+
+        if (vertical > 0.7f)
+            return GroupType.Ordered;
+
+        return GroupType.Unordered;
+    }
+
+    List<int> BuildVerticalOrdering(HashSet<int> ids) {
+        List<int> ordered = ids.ToList();
+
+        ordered.Sort((a,b) =>
+            _cubes[b].transform.position.y.CompareTo(
+            _cubes[a].transform.position.y));
+
+        return ordered;
+    }
+
+    // =====================================================
+    // ORDERED STACK TRAVERSAL
+    // =====================================================
+
+    void HandleOrderedTraversalUpdate() {
+        foreach (int id in touchedCubeIDs)
+        {
+            if (id == lastTouchedCube)
+                continue;
+
+            HandleOrderedTraversal(id, lastTouchedCube);
+            lastTouchedCube = id;
+        }
+    }
+
+    void HandleOrderedTraversal(int currentID, int previousID) {
+        if (!cubeToGroup.ContainsKey(currentID))
+            return;
+
+        CubeGroup group = cubeToGroup[currentID];
+
+        if (group.type != GroupType.Ordered)
+            return;
+
+        int currentIndex = group.orderedIDs.IndexOf(currentID);
+        int previousIndex = group.orderedIDs.IndexOf(previousID);
+
+        // must move downward
+        if (currentIndex == previousIndex + 1) {
+            completedOrderedTasks.Add(previousID);
+
+            Debug.Log($"Completed ordered task {previousID}");
+
+            RefreshGroupUI(group);
+        }
+    }
+
+    // =====================================================
+    // ROUTINE GROUP UI
+    // =====================================================
+
+    void CreateGroupUI(CubeGroup group) {
+        if (groupUIPrefab == null)
+            return;
+
+        Vector3 center = GetGroupCenter(group);
+        GameObject ui = Instantiate(groupUIPrefab, center, Quaternion.identity);
+        group.groupUI = ui;
+        RefreshGroupUI(group);
+    }
+
+    void RefreshGroupUI(CubeGroup group) {
+        if (group.groupUI == null)
+            return;
+
+        group.groupUI.transform.position = GetGroupCenter(group);
+        TMP_Text label = group.groupUI.GetComponentInChildren<TMP_Text>();
+        if (label == null)
+            return;
+
+        string typeString = group.type == GroupType.Ordered
+            ? "Ordered Routine"
+            : "Todo Group";
+
+        int completed = 0;
+
+        foreach (int id in group.cubeIDs) {
+            if (completedOrderedTasks.Contains(id))
+                completed++;
+        }
+
+        label.text =
+            $"{typeString}\n" +
+            $"Tasks: {group.cubeIDs.Count}\n" +
+            $"Completed: {completed}";
+    }
+
+    Vector3 GetGroupCenter(CubeGroup group) {
+        Vector3 sum = Vector3.zero;
+        foreach (int id in group.cubeIDs) {
+            sum += _cubes[id].transform.position;
+        }
+        return sum / group.cubeIDs.Count;
+    }
+
 }
