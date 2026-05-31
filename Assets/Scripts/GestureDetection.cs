@@ -14,7 +14,7 @@ using TMPro;
 public class GestureDetection : MonoBehaviour
 {
     [System.Serializable]
-    public class CubeState // Storing state of each cube for gesture detection
+    public class CubeState
     {
         public Transform transform;
 
@@ -26,7 +26,6 @@ public class GestureDetection : MonoBehaviour
 
         public bool isTouched;
 
-        // Shake detection — uses raw (unsmoothed) position to avoid filter killing velocity reversals
         public Vector3 lastRawPosition;
         public Vector3 rawVelocity;
         public int shakeDirectionChanges;
@@ -34,39 +33,39 @@ public class GestureDetection : MonoBehaviour
         public Vector3 lastRawVelocity;
         public float touchHeldTime;
 
-        // Spin detection
         public float spinTimer;
+        public float pointHeldTime;
     }
 
-    // Storing current or last known cube states, by ID
     private Dictionary<int, CubeState> _cubes = new Dictionary<int, CubeState>();
-    // List of IDs currently on screen
     private List<int> _detectedIDs = new List<int>();
+
+    // Track which cube IDs have been dismissed for the day
+    private HashSet<int> _dismissedCubeIDs = new HashSet<int>();
+    // Track which cube IDs already have a placeholder reminder created
+    private HashSet<int> _initializedCubeIDs = new HashSet<int>();
 
     [SerializeField] public Material outlineMaterial; 
     private Dictionary<int, Material> _outlineMaterialInstances = new Dictionary<int, Material>();
 
-
-    [SerializeField] float touchThreshold = 0.2f;
+    [SerializeField] float touchThreshold = 0.15f;
     [SerializeField] public OVRSkeleton leftSkeleton;
     [SerializeField] public OVRSkeleton rightSkeleton; 
     private Vector3 leftHandPos; 
     private Vector3 rightHandPos;
     private List<int> touchedCubeIDs = new List<int>(); 
 
-    // Darken fade overlay effect on focus
     [SerializeField] public OVRPassthroughLayer passthroughLayer; 
     [SerializeField] private float fadeSpeed = 0.5f;
     private Coroutine fadeRoutine;
 
-    [SerializeField] private TextMeshProUGUI debugText; 
+    // Debugging 
+    [SerializeField] private TextMeshProUGUI debugText;
 
-    // Creating reminders
     [SerializeField] private ReminderManager reminderManager;
     private HashSet<int> _anchoredCubeIDs = new HashSet<int>();
     private Dictionary<int, OVRSpatialAnchor> _cubeAnchors = new Dictionary<int, OVRSpatialAnchor>();
 
-    // Grouping cubes into routines
     public enum GroupType
     {
         Ordered,
@@ -77,31 +76,43 @@ public class GestureDetection : MonoBehaviour
     public class CubeGroup
     {
         public int groupID;
-        // all cubes in group
         public HashSet<int> cubeIDs = new HashSet<int>();
-        // ordered representation
         public List<int> orderedIDs = new List<int>();
         public GroupType type;
         public GameObject groupUI;
     }
 
-
     [Header("Forming Routines")]
-    [SerializeField] private float combineDistance = 0.12f;
-    [SerializeField] private float disconnectDistance = 0.25f;
+    [SerializeField] private float combineDistance = 0.08f;
+    [SerializeField] private float disconnectDistance = 0.1f;
     [SerializeField] private GameObject groupUIPrefab;
 
     private Dictionary<int, CubeGroup> cubeToGroup = new();
     private Dictionary<int, CubeGroup> groups = new();
 
     private int nextGroupID = 1;
-
     private int lastTouchedCube = -1;
-
     private HashSet<int> completedOrderedTasks = new();
 
-    // For testing purposes, possible tasks
     private List<string> tasks = new List<string> { "Take a walk", "Brush my teeth", "Vacuum", "Take my medication" };
+
+    // Home position set by gesture
+    private Dictionary<int, Vector3> _cubeHomePositions = new Dictionary<int, Vector3>();
+    private Dictionary<int, bool> _cubeHomed = new Dictionary<int, bool>(); // true once spin-anchored
+
+    [SerializeField] private GroundPathArrow groundPathArrow;
+    [SerializeField] private float awayFromHomeThreshold = 0.1f;
+
+    [SerializeField] private float spinThreshold = 1.5f; // was hardcoded 4f
+    
+    [SerializeField] private OVRHand leftHand;
+    [SerializeField] private OVRHand rightHand;
+    [SerializeField] private float pointHoldDuration = 1.5f;
+
+    [SerializeField] private GameObject homeMarkerPrefab;
+
+    private Dictionary<int, GameObject> _homeMarkers = new Dictionary<int, GameObject>();
+        
 
 
     void Start()
@@ -111,69 +122,71 @@ public class GestureDetection : MonoBehaviour
 
     void Update()
     {
-        // Track cube states + if they are being touched every frame
         UpdateDetectedIDs(); 
         UpdateCubeMotion(); 
         UpdateTouchedCubes(); 
 
         HandleCubeGrouping();
         HandleOrderedTraversalUpdate();
+        UpdateRoutines(); 
+        UpdateReturnArrows();
 
-        // Check for gesture detections for touched cubes
         foreach (int id in _detectedIDs) {
             CubeState cube = _cubes[id];
+            // DetectPoint(id, cube);
 
             if (!cube.isTouched)
                 continue;
 
             DetectShake(id, cube);
-            DetectSpin(id, cube);
         }
     }
 
-    // Get IDs of cubes currently detected on camera
     void UpdateDetectedIDs() {
         _detectedIDs.Clear();
 
-        foreach (var kvp in ArUcoTrackingAppCoordinator.m_markerGameObjectDictionary)
-        {
+        foreach (var kvp in ArUcoTrackingAppCoordinator.m_markerGameObjectDictionary) {
             int id = kvp.Key;
             GameObject cubeObj = kvp.Value;
             _detectedIDs.Add(id);
 
-            if (!_cubes.ContainsKey(id))
-            {
-                _cubes[id] = new CubeState
-                {
+            if (!_cubes.ContainsKey(id)) {
+                _cubes[id] = new CubeState {
                     transform = cubeObj.transform,
                     lastPosition = cubeObj.transform.position,
                     lastRotation = cubeObj.transform.rotation,
                     lastRawPosition = cubeObj.transform.position,
                     lastRawVelocity = Vector3.zero
                 };
+
+                // Auto-create a placeholder reminder the first time this cube is detected
+                if (!_initializedCubeIDs.Contains(id)) {
+                    _initializedCubeIDs.Add(id);
+                    int taskIdx = UnityEngine.Random.Range(0, tasks.Count);
+                    string task = tasks[taskIdx];
+                    reminderManager.CreateReminder(
+                        id,
+                        task,
+                        DateTime.Now.AddMinutes(1),
+                        "none");
+                }
             }
-            else
-            {
-                // If anchored, drive the cube's GameObject position from the anchor
+            else {
                if (_cubeAnchors.TryGetValue(id, out OVRSpatialAnchor anchor) && anchor != null && anchor.Localized) {
-                    // Drive BOTH the GameObject and the cached transform from the anchor
                     cubeObj.transform.position = anchor.transform.position;
                     cubeObj.transform.rotation = anchor.transform.rotation;
-                    _cubes[id].transform = cubeObj.transform;  // keep in sync
+                    _cubes[id].transform = cubeObj.transform;
                } else {
-                _cubes[id].transform = cubeObj.transform;
+                    _cubes[id].transform = cubeObj.transform;
                }
             }
         }
-        
     }
 
-    // Get IDs of cubes currently detected on camera
     void UpdateTouchedCubes() {
-        // Detect if cubes were placed down and released
         List<int> previouslyTouched = new List<int>(touchedCubeIDs);
         foreach (int id in previouslyTouched) {
-            if (!touchedCubeIDs.Contains(id)) { // was touched, now released
+            if (!touchedCubeIDs.Contains(id)) {
                 _cubes[id].touchHeldTime = 0f;
             }
         }
@@ -182,12 +195,10 @@ public class GestureDetection : MonoBehaviour
             _cubes[id].isTouched = false;
         touchedCubeIDs.Clear();
 
-        // Guard: don't run at all if skeletons aren't ready
         bool leftReady = leftSkeleton.IsInitialized && leftSkeleton.Bones != null && leftSkeleton.Bones.Count > 0;
         bool rightReady = rightSkeleton.IsInitialized && rightSkeleton.Bones != null && rightSkeleton.Bones.Count > 0;
 
         if (!leftReady && !rightReady) {
-            debugText.text = "Waiting for skeleton init...";
             SetDim(false);
             return;
         }
@@ -228,10 +239,9 @@ public class GestureDetection : MonoBehaviour
                 _cubeAnchors.Remove(id);
             }
         }
-        // If cube was released, place spatial anchor there for stable pos
+
         foreach (int id in previouslyTouched) {
             if (!touchedCubeIDs.Contains(id) && !_anchoredCubeIDs.Contains(id)) {
-                // Destroy old anchor if one exists
                 if (_cubeAnchors.TryGetValue(id, out OVRSpatialAnchor old) && old != null)
                     Destroy(old.gameObject);
                 
@@ -243,18 +253,22 @@ public class GestureDetection : MonoBehaviour
             }
         }
 
-        // Update outline
-        foreach (var kvp in ArUcoTrackingAppCoordinator.m_markerGameObjectDictionary) {
+
+        foreach (var kvp in ArUcoTrackingAppCoordinator.m_markerGameObjectDictionary)
+        {
             int id = kvp.Key;
-            if (_cubes.ContainsKey(id))
-                SetOutline(kvp.Value, _cubes[id].isTouched);
+            if (!_cubes.ContainsKey(id))
+                continue;
+
+            if (_cubes[id].isTouched) {
+                SetOutline(kvp.Value, true, Color.white);
+            }
         }
 
-        // Hide cube altogether if not touched or no active reminder
         foreach (int id in _detectedIDs) {
             bool touched = _cubes[id].isTouched;
+            // bool pointed = (id == pointedID);
     
-            // Show/hide the cube mesh
             GameObject cubeObj = ArUcoTrackingAppCoordinator.m_markerGameObjectDictionary[id];
             Transform cubeChild = cubeObj.transform.Find("Cube");
             if (cubeChild != null)
@@ -263,28 +277,55 @@ public class GestureDetection : MonoBehaviour
 
         bool anyTouched = touchedCubeIDs.Count > 0;
         SetDim(anyTouched);
-        // debugText.text = $"Touched: {string.Join(", ", touchedCubeIDs)}"; 
     }
 
-    // // Helper function, used to place anchor when cube is released
-    // void PlaceAnchorAtCube(int id) {
-    //     if (!_cubes.ContainsKey(id)) return;
-    //     if (AnchorsManager.Instance == null) {
-    //         Debug.LogWarning("AnchorsManager instance not found");
-    //         return;
-    //     }
+    // =========================================================
+    // GESTURES
+    // =========================================================
 
-    //     // Temporarily move the anchor's spawn transform to the cube's position
-    //     Transform spawnTransform = AnchorsManager.Instance.GetSpawnTransform();
-    //     Vector3 cubePos = _cubes[id].transform.position;
-    //     Quaternion cubeRot = _cubes[id].transform.rotation;
+    void DetectShake(int id, CubeState cube) {
+        if (cube.touchHeldTime < 0.3f) {
+            cube.touchHeldTime += Time.deltaTime;
+            cube.shakeDirectionChanges = 0;
+            cube.shakeTimer = 0f;
+            return;
+        }
 
-    //     AnchorsManager.Instance.CreateAnchorAt(cubePos, cubeRot);
-    //     Debug.Log($"Placed anchor for cube {id} at {cubePos}");
-    // }
+        Vector3 velocity = cube.rawVelocity;
+        float speed = velocity.magnitude;
 
-    // Show outline on touched cubes
-    void SetOutline(GameObject cube, bool show) {
+        if (speed < 1.0f) return;
+
+        float dot = Vector3.Dot(velocity.normalized, cube.lastRawVelocity.normalized);
+        if (dot < -0.6f)
+            cube.shakeDirectionChanges++;
+        cube.lastRawVelocity = velocity;
+
+        cube.shakeTimer += Time.deltaTime;
+
+        if (cube.shakeTimer > 0.5f) {
+            if (cube.shakeDirectionChanges >= 3) {
+                bool hasReminder = reminderManager.HasReminder(id);
+                bool alreadyDismissed = _dismissedCubeIDs.Contains(id);
+
+                if (hasReminder && !alreadyDismissed)
+                {
+                    // Dismiss the reminder for the day (keep it in reminderManager but mark dismissed)
+                    _dismissedCubeIDs.Add(id);
+                    debugText.text = $"Cube {id}: reminder dismissed for today.";
+
+                }
+                else
+                {
+                    debugText.text = $"Cube {id}: no active reminder to dismiss.";
+                }
+            }
+            cube.shakeDirectionChanges = 0;
+            cube.shakeTimer = 0f;
+        }
+    }
+
+    void SetOutline(GameObject cube, bool show, Color? outlineColor = null) {
         Transform cubeChild = cube.transform.Find("Cube");
         if (cubeChild == null) {
             Debug.Log($"No child named 'Cube' found on {cube.name}");
@@ -294,26 +335,43 @@ public class GestureDetection : MonoBehaviour
         MeshRenderer renderer = cubeChild.GetComponent<MeshRenderer>();
         if (renderer == null) return;
 
-        // Get the cube's ID to look up cached material
         int id = -1;
         foreach (var kvp in ArUcoTrackingAppCoordinator.m_markerGameObjectDictionary)
             if (kvp.Value == cube) { id = kvp.Key; break; }
 
-        Material[] mats = renderer.sharedMaterials; // sharedMaterials avoids copy leak
+        Material[] mats = renderer.sharedMaterials;
 
-        if (show && mats.Length < 2) {
+        if (show){
             if (!_outlineMaterialInstances.ContainsKey(id))
-                _outlineMaterialInstances[id] = new Material(outlineMaterial); // instantiate once
-            renderer.materials = new Material[] { mats[0], _outlineMaterialInstances[id] };
+                _outlineMaterialInstances[id] = new Material(outlineMaterial);
+
+            // Always update color
+            if (outlineColor.HasValue)
+            {
+                if (_outlineMaterialInstances[id].HasProperty("_Color"))
+                    _outlineMaterialInstances[id].SetColor("_Color", outlineColor.Value);
+                else if (_outlineMaterialInstances[id].HasProperty("_OutlineColor"))
+                    _outlineMaterialInstances[id].SetColor("_OutlineColor", outlineColor.Value);
+            }
+
+            // Only add the material if it isn't already present
+            if (mats.Length < 2)
+            {
+                renderer.materials = new Material[]
+                {
+                    mats[0],
+                    _outlineMaterialInstances[id]
+                };
+            }
         }
-        else if (!show && mats.Length >= 2) {
+        else if (mats.Length >= 2)
+        {
             renderer.materials = new Material[] { mats[0] };
         }
     }
-    
-    // Fade to darker camera overlay effect on cube focus
+
     public void SetDim(bool dim) {
-        float targetBrightness = dim ? -0.6f : 0f; // -1f is fully black
+        float targetBrightness = dim ? -0.3f : 0f;
 
         if (fadeRoutine != null)
             StopCoroutine(fadeRoutine);
@@ -332,21 +390,17 @@ public class GestureDetection : MonoBehaviour
             yield return null;
         }
 
-        // Ensure we land exactly on target
         passthroughLayer.SetBrightnessContrastSaturation(target, 0f, 0f);
     }
 
-    // Update cube states, occurs every frame
     void UpdateCubeMotion() {
         foreach (int id in _detectedIDs)
         {
             CubeState cube = _cubes[id];
             Transform t = cube.transform;
 
-            // Smoothed velocity — used for spin (angular) and anything that benefits from stability
             cube.velocity = (t.position - cube.lastPosition) / Time.deltaTime;
 
-            // Angular velocity (from smoothed rotation is fine — spin is sustained, not abrupt)
             Quaternion delta = t.rotation * Quaternion.Inverse(cube.lastRotation);
             delta.ToAngleAxis(out float angle, out Vector3 axis);
             if (angle > 180f) angle -= 360f;
@@ -355,9 +409,6 @@ public class GestureDetection : MonoBehaviour
             cube.lastPosition = t.position;
             cube.lastRotation = t.rotation;
 
-            // Raw velocity — pulled from the coordinator's unsmoothed pose, used for shake detection.
-            // The smoothing filter in ArUcoMarkerTracking blurs rapid direction reversals, which
-            // is exactly the signal shake detection relies on, so we bypass it here.
             if (ArUcoTrackingAppCoordinator.m_markerRawPositionDictionary != null &&
                 ArUcoTrackingAppCoordinator.m_markerRawPositionDictionary.TryGetValue(id, out Vector3 rawPos))
             {
@@ -366,92 +417,11 @@ public class GestureDetection : MonoBehaviour
             }
             else
             {
-                // Fallback: if raw positions aren't exposed yet, use smoothed velocity.
-                // Shake detection will be less sensitive but won't break.
                 cube.rawVelocity = cube.velocity;
                 cube.lastRawPosition = t.position;
             }
         }
-    }   
-
-    // GESTURES ------------------------------------------------------------------
-    // ---------------------------------------------------------------------------
-    void DetectShake(int id, CubeState cube) {
-        if (cube.touchHeldTime < 0.3f) {
-            cube.touchHeldTime += Time.deltaTime;
-            cube.shakeDirectionChanges = 0;
-            cube.shakeTimer = 0f;
-            return;
-        }
-
-        // Use raw velocity so the pose smoothing filter doesn't suppress direction reversals
-        Vector3 velocity = cube.rawVelocity;
-
-        float speed = velocity.magnitude;
-
-        if (speed < 1.0f) return;
-
-        float dot = Vector3.Dot(velocity.normalized, cube.lastRawVelocity.normalized);
-        if (dot < -0.6f)
-            cube.shakeDirectionChanges++;
-        cube.lastRawVelocity = velocity;
-
-        cube.shakeTimer += Time.deltaTime;
-
-        if (cube.shakeTimer > 0.5f) {
-            if (cube.shakeDirectionChanges >= 5) {
-                debugText.text = $"Cube {id} SHAKE DETECTED!";
-                
-                bool reminderExists = reminderManager.HasReminder(id);
-
-                if (reminderExists)
-                {
-                    reminderManager.DeleteReminder(id);
-
-                    debugText.text =
-                        $"Deleted reminder for cube {id}";
-                }
-                else
-                {
-                    int task_idx = UnityEngine.Random.Range(0, tasks.Count);
-                    string task = tasks[task_idx]; 
-                    // Temporary placeholder until voice input is connected
-                    reminderManager.CreateReminder(
-                        id,
-                        task,
-                        DateTime.Now.AddMinutes(1),
-                        "none");
-
-                    debugText.text =
-                        $"Created reminder for cube {id}";
-
-                    // voiceReminderController.currentCubeId = id;
-                    // voiceExperience.Activate();
-                }
-            }
-            cube.shakeDirectionChanges = 0;
-            cube.shakeTimer = 0f;
-        }
-    }
-
-    void DetectSpin(int id, CubeState cube)
-    {
-        float horizontalSpin = Mathf.Abs(cube.angularVelocity.y);
-
-        if (horizontalSpin > 4f) {
-            cube.spinTimer += Time.deltaTime;
-
-            if (cube.spinTimer > 0.25f) {
-                Debug.Log($"Cube {id} SPIN");
-                debugText.text = $"Cube {id} SPIN DETECTED!";
-                cube.spinTimer = 0f;
-            }
-        }
-        else {
-            cube.spinTimer = 0f;
-        }
-    }   
-
+    }    
     // =====================================================
     // GROUPING INTO ROUTINES
     // =====================================================
@@ -523,13 +493,8 @@ public class GestureDetection : MonoBehaviour
         if (!reminderManager.HasReminder(idA) || !reminderManager.HasReminder(idB)) {
             return;
         }
-        CubeGroup groupA = cubeToGroup.ContainsKey(idA)
-            ? cubeToGroup[idA]
-            : null;
-
-        CubeGroup groupB = cubeToGroup.ContainsKey(idB)
-            ? cubeToGroup[idB]
-            : null;
+        CubeGroup groupA = cubeToGroup.ContainsKey(idA) ? cubeToGroup[idA] : null;
+        CubeGroup groupB = cubeToGroup.ContainsKey(idB) ? cubeToGroup[idB] : null;
 
         // already same group
         if (groupA != null && groupA == groupB)
@@ -550,9 +515,7 @@ public class GestureDetection : MonoBehaviour
             cubeToGroup[idB] = newGroup;
 
             UpdateGroupSemantics(newGroup);
-
             CreateGroupUI(newGroup);
-
             Debug.Log($"Created Group {newGroup.groupID}");
             foreach (int id in newGroup.cubeIDs) {
                 reminderManager.SetCubeGrouped(id, true);
@@ -564,38 +527,26 @@ public class GestureDetection : MonoBehaviour
         if (groupA != null && groupB == null)
         {
             groupA.cubeIDs.Add(idB);
-
             cubeToGroup[idB] = groupA;
-
             UpdateGroupSemantics(groupA);
-
             RefreshGroupUI(groupA);
-
             Debug.Log($"Added cube {idB} to group {groupA.groupID}");
             foreach (int id in groupA.cubeIDs) {
                 reminderManager.SetCubeGrouped(id, true);
             }
-
             return;
         }
 
-        if (groupB != null && groupA == null)
-        {
+        if (groupB != null && groupA == null) {
             groupB.cubeIDs.Add(idA);
-
             cubeToGroup[idA] = groupB;
-
             UpdateGroupSemantics(groupB);
-
             RefreshGroupUI(groupB);
-
             Debug.Log($"Added cube {idA} to group {groupB.groupID}");
-
             return;
         }
 
-        foreach (int id in groupB.cubeIDs)
-        {
+        foreach (int id in groupB.cubeIDs) {
             groupA.cubeIDs.Add(id);
 
             cubeToGroup[id] = groupA;
@@ -642,6 +593,9 @@ public class GestureDetection : MonoBehaviour
 
         CreateGroupUI(newGroup);
         RefreshGroupUI(originalGroup);
+
+        reminderManager.SetCubeGrouped(idB, false);
+
         if (originalGroup.cubeIDs.Count == 1) {
             int remaining = originalGroup.cubeIDs.First();
             reminderManager.SetCubeGrouped(remaining, false);
@@ -669,31 +623,43 @@ public class GestureDetection : MonoBehaviour
     }
 
     GroupType DetectGroupType(CubeGroup group) {
-        if (group.cubeIDs.Count < 2)
-            return GroupType.Unordered;
+        return GroupType.Unordered; 
+        // TO-DO: Implementing ordered lists
+        // if (group.cubeIDs.Count < 2)
+        //     return GroupType.Unordered;
 
-        List<int> ids = group.cubeIDs.ToList();
+        // List<int> ids = group.cubeIDs.ToList();
+        // Camera cam = Camera.main;
 
-        Vector3 first = _cubes[ids[0]].transform.position;
-        Vector3 last = _cubes[ids[ids.Count - 1]].transform.position;
+        // float minScreenY = float.MaxValue, maxScreenY = float.MinValue;
+        // float minScreenX = float.MaxValue, maxScreenX = float.MinValue;
 
-        Vector3 dir = (last - first).normalized;
+        // foreach (int id in ids) {
+        //     Vector3 screenPos = cam.WorldToScreenPoint(_cubes[id].transform.position);
+        //     minScreenX = Mathf.Min(minScreenX, screenPos.x);
+        //     maxScreenX = Mathf.Max(maxScreenX, screenPos.x);
+        //     minScreenY = Mathf.Min(minScreenY, screenPos.y);
+        //     maxScreenY = Mathf.Max(maxScreenY, screenPos.y);
+        // }
 
-        float vertical = Mathf.Abs(Vector3.Dot(dir, Vector3.up));
+        // float screenSpreadY = maxScreenY - minScreenY;
+        // float screenSpreadX = maxScreenX - minScreenX;
 
-        if (vertical > 0.7f)
-            return GroupType.Ordered;
+        // // Ordered if taller than wide in screen space
+        // if (screenSpreadY > screenSpreadX * 1.5f)
+        //     return GroupType.Ordered;
 
-        return GroupType.Unordered;
+        // return GroupType.Unordered;
     }
 
     List<int> BuildVerticalOrdering(HashSet<int> ids) {
+        Camera cam = Camera.main;
         List<int> ordered = ids.ToList();
-
-        ordered.Sort((a,b) =>
-            _cubes[b].transform.position.y.CompareTo(
-            _cubes[a].transform.position.y));
-
+        ordered.Sort((a, b) => {
+            float ay = cam.WorldToScreenPoint(_cubes[a].transform.position).y;
+            float by = cam.WorldToScreenPoint(_cubes[b].transform.position).y;
+            return by.CompareTo(ay); // top to bottom
+        });
         return ordered;
     }
 
@@ -742,17 +708,23 @@ public class GestureDetection : MonoBehaviour
         if (groupUIPrefab == null)
             return;
 
-        Vector3 center = GetGroupCenter(group);
+        Vector3 center = GetGroupCenter(group) + Vector3.up * 0.15f;
         GameObject ui = Instantiate(groupUIPrefab, center, Quaternion.identity);
         group.groupUI = ui;
         RefreshGroupUI(group);
     }
 
     void RefreshGroupUI(CubeGroup group) {
-        if (group.groupUI == null)
-            return;
+         if (group.groupUI == null) return;
 
-        group.groupUI.transform.position = GetGroupCenter(group);
+        bool isActive = group.cubeIDs.Count > 1;
+        group.groupUI.SetActive(isActive);
+
+        if (!isActive) return;
+
+        Vector3 center = GetGroupCenter(group);
+        Vector3 awayFromCamera = (center - Camera.main.transform.position).normalized;
+        group.groupUI.transform.position = center + awayFromCamera * 0.1f + Vector3.up * 0.2f;        
         TMP_Text label = group.groupUI.GetComponentInChildren<TMP_Text>();
         if (label == null)
             return;
@@ -780,6 +752,172 @@ public class GestureDetection : MonoBehaviour
             sum += _cubes[id].transform.position;
         }
         return sum / group.cubeIDs.Count;
+    }
+
+   void UpdateRoutines() {
+        foreach (var group in groups.Values) {
+            if (group.groupUI == null) continue;
+            Vector3 center = GetGroupCenter(group);
+            Vector3 awayFromCamera = (center - Camera.main.transform.position).normalized;
+            group.groupUI.transform.position = center + awayFromCamera * 0.1f + Vector3.up * 0.2f;
+
+            // Face the camera
+            var cam = Camera.main;
+            if (cam != null)
+                group.groupUI.transform.rotation = Quaternion.LookRotation(
+                    group.groupUI.transform.position - cam.transform.position);
+        }
+    }
+
+    void UpdateReturnArrows() {
+        foreach (int id in touchedCubeIDs) {
+            bool homed = _cubeHomed.ContainsKey(id) && _cubeHomed[id];
+            if (!homed) {
+                // No anchor set yet — hide arrow if it exists
+                continue;
+            } 
+
+            Vector3 homePos = _cubeHomePositions[id];
+            Vector3 cubePos = _cubes[id].transform.position;
+            float distFromHome = Vector3.Distance(cubePos, homePos);
+
+            bool dismissed = _dismissedCubeIDs.Contains(id);
+            bool inRoutine = cubeToGroup.ContainsKey(id) && cubeToGroup[id].cubeIDs.Count > 1;
+
+            bool shouldShowArrow = !dismissed && distFromHome > awayFromHomeThreshold;
+            if (shouldShowArrow) {
+                ShowReturnArrow(id, homePos);
+                return; 
+            }
+        }
+        HideReturnArrow(); 
+    }
+
+    void ShowReturnArrow(int id, Vector3 homePos) {
+        if (groundPathArrow == null) return;
+        groundPathArrow.GetComponent<LineRenderer>().enabled = true; 
+        groundPathArrow.startPosition = _cubes[id].transform.position;
+        groundPathArrow.targetPosition = homePos;
+    }
+
+    void HideReturnArrow()
+    {
+        if (groundPathArrow != null)
+            groundPathArrow.GetComponent<LineRenderer>().enabled = false; 
+    }
+
+    // TODO: Fix gesture for setting homing point
+    // -----------------------------------
+    // POINT GESTURE FOR HOMING
+    // -----------------------------------
+    // int GetPointedCubeID() {
+    //     Vector3? fingertip = GetIndexFingertipPosition();
+    //     if (fingertip == null) return -1;
+
+    //     foreach (int id in _detectedIDs)
+    //     {
+    //         Collider col = _cubes[id].transform.GetComponentInChildren<Collider>();
+    //         if (col == null) continue;
+
+    //         if (Vector3.Distance(fingertip.Value, _cubes[id].transform.position) < 0.1f) {
+    //             return id;
+    //         }
+    //     }
+
+    //     return -1;
+    // }
+
+    // Vector3? GetIndexFingertipPosition() {
+    //     OVRHand hand = null;
+    //     if (leftHand  != null && leftHand.IsTracked && IsPointingGesture(leftHand))
+    //         hand = leftHand;
+    //     else if (rightHand != null && rightHand.IsTracked && IsPointingGesture(rightHand))
+    //         hand = rightHand;
+
+    //     if (hand == null) return null;
+
+    //     var skeleton = hand.GetComponent<OVRSkeleton>();
+    //     if (skeleton == null) return null;
+
+    //     foreach (var bone in skeleton.Bones)
+    //         if (bone.Id == OVRSkeleton.BoneId.Hand_IndexTip)
+    //             return bone.Transform.position;
+
+    //     return null;
+    // }
+
+    // bool IsPointingGesture(OVRHand hand){
+    //     // if (hand == null || !hand.IsTracked) return false;
+
+    //     // var skeleton = hand.GetComponent<OVRSkeleton>();
+    //     // if (skeleton == null || !skeleton.IsInitialized) return false;
+
+    //     // // Index finger must be extended
+    //     // bool indexExtended = hand.GetFingerIsPinching(OVRHand.HandFinger.Index) == false
+    //     //     && IsFingerExtended(skeleton, OVRSkeleton.BoneId.Hand_Index3);
+
+    //     // // Other fingers must be curled
+    //     // bool middleCurled = !IsFingerExtended(skeleton, OVRSkeleton.BoneId.Hand_Middle3);
+    //     // bool ringCurled   = !IsFingerExtended(skeleton, OVRSkeleton.BoneId.Hand_Ring3);
+    //     // bool pinkyCurled  = !IsFingerExtended(skeleton, OVRSkeleton.BoneId.Hand_Pinky3);
+
+    //     // return indexExtended && middleCurled && ringCurled && pinkyCurled;
+    //     return hand != null && hand.IsTracked && hand.GetFingerIsPinching(OVRHand.HandFinger.Index);
+    // }
+
+    // bool IsFingerExtended(OVRSkeleton skeleton, OVRSkeleton.BoneId tipBoneId) {
+    //     var bones = skeleton.Bones;
+    //     Transform wrist = null, tip = null;
+
+    //     foreach (var bone in bones)
+    //     {
+    //         if (bone.Id == OVRSkeleton.BoneId.Hand_WristRoot) wrist = bone.Transform;
+    //         if (bone.Id == tipBoneId) tip = bone.Transform;
+    //     }
+
+    //     if (wrist == null || tip == null) return false;
+
+    //     // Finger is extended when its tip is far enough from the wrist
+    //     return Vector3.Distance(wrist.position, tip.position) > 0.08f;
+    // }
+
+    // void DetectPoint(int id, CubeState cube)
+    // {
+    //     if (ArUcoTrackingAppCoordinator.m_markerGameObjectDictionary.TryGetValue(id, out GameObject cubeObj)) {
+    //         SetOutline(cubeObj, true, Color.yellow);
+    //     }
+    //     // int pointedID = GetPointedCubeID();
+    //     // if (pointedID == id)
+    //     // {
+    //     //     cube.pointHeldTime += Time.deltaTime;
+    //     //     if (cube.pointHeldTime > 1.5f)
+    //     //     {
+    //     //         cube.pointHeldTime = 0f;
+    //     //         OnPointGesture(id);
+    //     //     }
+    //     // }
+    //     // else
+    //     // {
+    //     //     cube.pointHeldTime = 0f;
+    //     // }
+    // }
+
+    public void OnPointGesture(int id) {
+        if (!reminderManager.HasReminder(id))
+            return;
+
+        Vector3 anchorPos = _cubes[id].transform.position;
+        Quaternion anchorRot = _cubes[id].transform.rotation;
+        _cubeHomePositions[id] = anchorPos;
+        _cubeHomed[id] = true;
+
+        debugText.text = $"Cube {id} home set at {anchorPos:F2}";
+
+        if (_homeMarkers.TryGetValue(id, out GameObject oldMarker))
+            Destroy(oldMarker);
+
+        GameObject marker = Instantiate(homeMarkerPrefab, anchorPos, Quaternion.identity);
+        _homeMarkers[id] = marker;
     }
 
 }

@@ -38,7 +38,7 @@ namespace TryAR.MarkerTracking
         /// Coefficient for low-pass filter (0-1). Higher values mean more smoothing.
         /// </summary>
         [Range(0, 1)]
-        [SerializeField] private float _poseFilterCoefficient = 0.5f;
+        [SerializeField] private float _poseFilterCoefficient = 0.25f;
 
         /// <summary>
         /// Division factor for input image resolution. Higher values improve performance but reduce detection accuracy.
@@ -166,8 +166,8 @@ namespace TryAR.MarkerTracking
             detectorParams.set_minDistanceToBorder(3);
             detectorParams.set_useAruco3Detection(true);
             detectorParams.set_cornerRefinementMethod(Objdetect.CORNER_REFINE_SUBPIX);
-            detectorParams.set_minSideLengthCanonicalImg(20);
-            detectorParams.set_errorCorrectionRate(0.8);
+            detectorParams.set_minSideLengthCanonicalImg(32);
+            detectorParams.set_errorCorrectionRate(0.75);
             RefineParameters refineParameters = new RefineParameters(10f, 3f, true);
 
             // Create the ArUco detector
@@ -355,7 +355,7 @@ namespace TryAR.MarkerTracking
                         ARUtils.SetTransformFromMatrix(targetObject.transform, ref arMatrix);
 
                         // Offset cube inwards so marker becomes top face
-                        float depthOffset = 0.045f;
+                        float depthOffset = 0.06f;
                         targetObject.transform.position -= targetObject.transform.forward * depthOffset;
                     }
                 }
