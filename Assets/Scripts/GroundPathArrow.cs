@@ -4,7 +4,7 @@ public class GroundPathArrow : MonoBehaviour
 {
     [Header("Line Settings")]
     [SerializeField] private int segmentCount = 20;
-    [SerializeField] private float lineWidth = 0.01f;
+    [SerializeField] private float lineWidth = 0.02f;
     [SerializeField] private float groundOffset = 0.02f; // float just above floor
     [SerializeField] private float arcHeight = 0.15f;     // how much the path bows upward in middle
 
@@ -37,27 +37,22 @@ public class GroundPathArrow : MonoBehaviour
         _line.positionCount = segmentCount;
         _line.useWorldSpace = true;
         _line.textureMode = LineTextureMode.Tile;
-
-        // Cache material instance so we can scroll UV without affecting shared mat
-        _mat = new Material(_line.sharedMaterial);
-        _line.material = _mat;
     }
 
     void Update()
     {
         DrawPath();
-        ScrollTexture();
         PulseWidth();
 
         // Keep arrow head at target
-        if (arrowHeadPrefab != null)
-        {
-            arrowHeadPrefab.transform.position = targetPosition + Vector3.up * (groundOffset + 0.01f);
-            Vector3 dir = (targetPosition - startPosition).normalized;
-            dir.y = 0;
-            if (dir != Vector3.zero)
-                arrowHeadPrefab.transform.rotation = Quaternion.LookRotation(dir);
-        }
+        // if (arrowHeadPrefab != null)
+        // {
+        //     arrowHeadPrefab.transform.position = targetPosition + Vector3.up * (groundOffset + 0.01f);
+        //     Vector3 dir = (targetPosition - startPosition).normalized;
+        //     dir.y = 0;
+        //     if (dir != Vector3.zero)
+        //         arrowHeadPrefab.transform.rotation = Quaternion.LookRotation(dir);
+        // }
     }
 
     void DrawPath() {
@@ -71,14 +66,6 @@ public class GroundPathArrow : MonoBehaviour
             float t = i / (float)(segmentCount - 1);
             _line.SetPosition(i, QuadraticBezier(start, mid, end, t));
         }
-    }
-
-    void ScrollTexture()
-    {
-        // Scrolling UV makes it look like the path is flowing toward the target
-        Vector2 offset = _mat.mainTextureOffset;
-        offset.y -= scrollSpeed * Time.deltaTime; // negative = moves toward target
-        _mat.mainTextureOffset = offset;
     }
 
     void PulseWidth()

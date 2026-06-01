@@ -32,18 +32,18 @@ namespace TryAR.MarkerTracking
         /// <summary>
         /// The length of the markers' side in meters.
         /// </summary>
-        [SerializeField] private float _markerLength = 0.1f;
+        [SerializeField] private float _markerLength = 0.025f;
 
         /// <summary>
         /// Coefficient for low-pass filter (0-1). Higher values mean more smoothing.
         /// </summary>
         [Range(0, 1)]
-        [SerializeField] private float _poseFilterCoefficient = 0.25f;
+        [SerializeField] private float _poseFilterCoefficient = 0.2f;
 
         /// <summary>
         /// Division factor for input image resolution. Higher values improve performance but reduce detection accuracy.
         /// </summary>
-        [SerializeField] private int _divideNumber = 2;
+        [SerializeField] private int _divideNumber = 1;
         
         /// <summary>
         /// Read-only access to the divide number value
@@ -165,7 +165,7 @@ namespace TryAR.MarkerTracking
             DetectorParameters detectorParams = new DetectorParameters();
             detectorParams.set_minDistanceToBorder(3);
             detectorParams.set_useAruco3Detection(true);
-            detectorParams.set_cornerRefinementMethod(Objdetect.CORNER_REFINE_SUBPIX);
+            detectorParams.set_cornerRefinementMethod(Objdetect.CORNER_REFINE_NONE);
             detectorParams.set_minSideLengthCanonicalImg(32);
             detectorParams.set_errorCorrectionRate(0.75);
             RefineParameters refineParameters = new RefineParameters(10f, 3f, true);

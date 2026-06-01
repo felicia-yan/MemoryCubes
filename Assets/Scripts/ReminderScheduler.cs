@@ -18,45 +18,22 @@ public class ReminderScheduler : MonoBehaviour
             ReminderCoroutine(reminder));
     }
 
-    private IEnumerator ReminderCoroutine(
-        ReminderManager.Reminder reminder)
-    {
-        while (true)
-        {
-            TimeSpan delay =
-                reminder.triggerTime - DateTime.Now;
+    private IEnumerator ReminderCoroutine(ReminderManager.Reminder reminder) {
+        while (true) {
+            TimeSpan now = DateTime.Now.TimeOfDay;
 
-            if (delay.TotalSeconds > 0)
-            {
-                Debug.Log(
-                    $"Reminder scheduled in {delay.TotalSeconds} seconds");
+            TimeSpan delay = reminder.triggerTime - now;
 
-                yield return new WaitForSeconds(
-                    (float)delay.TotalSeconds);
-            }
+            if (delay.TotalSeconds < 0)
+                delay += TimeSpan.FromDays(1);
+
+            yield return new WaitForSeconds(
+                (float)delay.TotalSeconds);
 
             TriggerReminder(reminder);
 
-            switch (reminder.recurrence)
-            {
-                case "daily":
-                    reminder.triggerTime =
-                        reminder.triggerTime.AddDays(1);
-                    break;
-
-                case "weekly":
-                    reminder.triggerTime =
-                        reminder.triggerTime.AddDays(7);
-                    break;
-
-                case "monthly":
-                    reminder.triggerTime =
-                        reminder.triggerTime.AddMonths(1);
-                    break;
-
-                default:
-                    yield break;
-            }
+            if (reminder.recurrence == "none")
+                yield break;
         }
     }
 
