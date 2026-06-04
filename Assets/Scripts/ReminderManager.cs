@@ -492,7 +492,7 @@ public class ReminderManager : MonoBehaviour
 
     }
 
-    private bool ContainsAny(string text, params string[] keywords) {
+    public static bool ContainsAny(string text, params string[] keywords) {
         text = text.ToLowerInvariant();
 
         foreach (var keyword in keywords)
@@ -504,7 +504,7 @@ public class ReminderManager : MonoBehaviour
         return false;
     }
 
-    private string GetIconForTask(string task) {
+    public static string GetIconForTask(string task) {
         if (ContainsAny(task,"water", "drink", "hydrate"))
         return ReminderIcons.GlassWater;
 

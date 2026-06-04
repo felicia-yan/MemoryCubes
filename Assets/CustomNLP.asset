@@ -1,0 +1,704 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae5a46bda3295124c99b0e6537ac7252, type: 3}
+  m_Name: CustomNLP
+  m_EditorClassIdentifier: Meta.WitAi::Meta.WitAi.Data.Configuration.WitConfiguration
+  _clientAccessToken: SQ53Q6PXUMXIOSA2YDRKNOH7BYTAIQ2J
+  editorVersionTag: 
+  buildVersionTag: 
+  _appInfo:
+    name: memory_cubes
+    id: 1515606889946518
+    lang: en
+    isPrivate: 1
+    createdAt: 2026-06-01T10:17:46-0700
+    trainingStatus: 1
+    lastTrainDuration: 240
+    lastTrainedAt: 2026-06-01T20:01:56-0700
+    nextTrainAt: 2026-06-01T19:57:56-0700
+    intents:
+    - id: 1498532731764514
+      name: set_reminder
+      entities:
+      - name: task:task
+        id: 4411709505743623
+      - name: wit$datetime:datetime
+        id: 1913133722695650
+    entities:
+    - name: task
+      id: 1301267478818529
+      lookups:
+      - free-text
+      - keywords
+      roles:
+      - name: task
+        id: 4411709505743623
+      keywords:
+      - keyword: Brush my teeth
+        synonyms:
+        - brush my teeth
+      - keyword: Do a crossword
+        synonyms:
+        - do a crossword
+      - keyword: Drink coffee
+        synonyms:
+        - drink coffee
+      - keyword: Eat dinner
+        synonyms:
+        - eat dinner
+        - eat supper
+      - keyword: Listen to music
+        synonyms:
+        - listen to music
+      - keyword: Read a magazine
+        synonyms:
+        - read a magazine
+        - read magazine
+      - keyword: Read the news
+        synonyms:
+        - read the news
+      - keyword: clean up the kitchen
+        synonyms:
+        - clean up the kitchen
+      - keyword: do the laundry
+        synonyms:
+        - do laundry
+        - do the laundry
+        - wash clothes
+      - keyword: drink water
+        synonyms:
+        - drink water
+        - hydrate
+      - keyword: eat breakfast
+        synonyms:
+        - eat breakfast
+      - keyword: eat lunch
+        synonyms:
+        - eat lunch
+      - keyword: exercise
+        synonyms:
+        - exercise
+      - keyword: get dressed
+        synonyms:
+        - change clothes
+        - change my clothes
+        - get dressed
+      - keyword: get my mail
+        synonyms:
+        - get my mail
+      - keyword: get the mail
+        synonyms:
+        - get the mail
+      - keyword: grab my keys
+        synonyms:
+        - grab my keys
+      - keyword: make breakfast
+        synonyms:
+        - make breakfast
+      - keyword: mop the floor
+        synonyms:
+        - mop
+        - mop the floor
+      - keyword: pay my bill
+        synonyms:
+        - pay my bill
+      - keyword: read a book
+        synonyms:
+        - read a book
+      - keyword: take a break
+        synonyms:
+        - take a break
+      - keyword: take a nap
+        synonyms:
+        - sleep
+        - take a nap
+      - keyword: take a shower
+        synonyms:
+        - take a shower
+      - keyword: take a walk
+        synonyms:
+        - go on a walk
+        - take a walk
+      - keyword: take my medication
+        synonyms:
+        - take medicine
+        - take my medication
+      - keyword: take my pills
+        synonyms:
+        - take my pills
+        - take pills
+      - keyword: vacuum
+        synonyms:
+        - vacuum
+      - keyword: wash my face
+        synonyms:
+        - wash my face
+      - keyword: wash the dishes
+        synonyms:
+        - wash the dishes
+      - keyword: watch TV
+        synonyms:
+        - watch tv
+    - name: wit$datetime
+      id: 535a810f-8911-4bfe-976a-6e3c193f1251
+      lookups: []
+      roles:
+      - name: datetime
+        id: 1913133722695650
+      - name: datetime
+        id: 980932137715087
+      keywords: []
+    traits: []
+    versionTags: []
+    voices:
+    - name: wit$British Butler
+      locale: en_GB
+      gender: male
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Cael
+      locale: en_US
+      gender: male
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Cam
+      locale: en_US
+      gender: male
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Carl
+      locale: en_US
+      gender: male
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Cartoon Baby
+      locale: en_US
+      gender: nonbinary
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Cartoon Kid
+      locale: en_US
+      gender: female
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Cartoon Villain
+      locale: en_US
+      gender: female
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Charlie
+      locale: en_US
+      gender: male
+      styles:
+      - default
+      - soft
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Cockney Accent
+      locale: en_GB
+      gender: nonbinary
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Cody
+      locale: en_US
+      gender: male
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Colin
+      locale: en_CA
+      gender: male
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Connor
+      locale: en_US
+      gender: male
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Cooper
+      locale: en_US
+      gender: male
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Disaffected
+      locale: en_US
+      gender: female
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Hollywood
+      locale: en_US
+      gender: female
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Kenyan Accent
+      locale: en_US
+      gender: female
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Overconfident
+      locale: en_US
+      gender: male
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Pirate
+      locale: en_GB
+      gender: male
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Prospector
+      locale: en_US
+      gender: male
+      styles:
+      - default
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Railey
+      locale: en_US
+      gender: female
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Rebecca
+      locale: en_US
+      gender: female
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Remi
+      locale: en_US
+      gender: female
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Rosie
+      locale: en_CA
+      gender: female
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Rubie
+      locale: en_US
+      gender: female
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Southern Accent
+      locale: en_US
+      gender: male
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Surfer
+      locale: en_US
+      gender: male
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Trendy
+      locale: en_US
+      gender: female
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Vampire
+      locale: en_US
+      gender: male
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Whimsical
+      locale: en_GB
+      gender: female
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+    - name: wit$Wizard
+      locale: en_GB
+      gender: male
+      styles:
+      - default
+      - soft
+      - formal
+      - fast
+      - projected
+      supported_features:
+      - style
+      - pitch
+      - speed
+      - sfx
+      - viseme_events
+      - phoneme_events
+      - word_events
+  _configData:
+  - {fileID: 7883414857596215649}
+  _configurationId: cd1a9cc4-d6a0-4f83-bfc8-99a03c149f49
+  _requestType: 0
+  _requestTimeoutMs: 10000
+  endpointConfiguration:
+    _uriScheme: 
+    _authority: 
+    _port: 0
+    _witApiVersion: 
+    _message: 
+    _speech: 
+    _dictation: 
+    _synthesize: 
+    _event: 
+    _converse: 
+  isDemoOnly: 0
+  useIntentAttributes: 1
+  useConduit: 1
+  _manifestLocalPath: ConduitManifest-bb440f38-ea6f-4963-888b-069ffee0087e.json
+  excludedAssemblies:
+  - Oculus.Voice.Demo, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+  - Meta.WitAi.Samples, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+  relaxedResolution: 0
+--- !u!114 &7883414857596215649
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d1c2918ba0e7451694416d42d69e0944, type: 3}
+  m_Name: WitComposerData
+  m_EditorClassIdentifier: Meta.Wit.Composer::Meta.WitAi.Composer.Data.Info.WitComposerData
+  canvases: []

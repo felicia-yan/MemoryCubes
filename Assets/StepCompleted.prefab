@@ -204,8 +204,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: \uf254
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 97df51c45c3cc4ecb89d9033bfd5eaee, type: 2}
-  m_sharedMaterial: {fileID: -8228252684423825347, guid: 97df51c45c3cc4ecb89d9033bfd5eaee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 00caf12f8c3b5430eb6a9063558750b2, type: 2}
+  m_sharedMaterial: {fileID: -4650300374160386575, guid: 00caf12f8c3b5430eb6a9063558750b2, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -636,7 +636,7 @@ GameObject:
   - component: {fileID: 2032021955065940309}
   - component: {fileID: 3115784206335626066}
   - component: {fileID: 4239962189087781771}
-  - component: {fileID: 5602015768724224919}
+  - component: {fileID: 7232512340001858783}
   m_Layer: 3
   m_Name: StepCompleted
   m_TagString: Untagged
@@ -719,8 +719,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.HorizontalLayoutGroup
   m_Padding:
-    m_Left: 30
-    m_Right: 30
+    m_Left: 60
+    m_Right: 60
     m_Top: 0
     m_Bottom: 0
   m_ChildAlignment: 4
@@ -732,7 +732,7 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
---- !u!114 &5602015768724224919
+--- !u!114 &7232512340001858783
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -741,11 +741,17 @@ MonoBehaviour:
   m_GameObject: {fileID: 7066102023388801875}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3245ec927659c4140ac4f8d17403cc18, type: 3}
+  m_Script: {fileID: 11500000, guid: 306cc8c2b49d7114eaa3623786fc2126, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.ContentSizeFitter
-  m_HorizontalFit: 2
-  m_VerticalFit: 0
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.LayoutElement
+  m_IgnoreLayout: 0
+  m_MinWidth: -1
+  m_MinHeight: -1
+  m_PreferredWidth: 500
+  m_PreferredHeight: 100
+  m_FlexibleWidth: -1
+  m_FlexibleHeight: -1
+  m_LayoutPriority: 1
 --- !u!1 &9071326463643141354
 GameObject:
   m_ObjectHideFlags: 0
@@ -781,8 +787,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 216, y: -49}
-  m_SizeDelta: {x: 401.5, y: 4}
+  m_AnchoredPosition: {x: 239.5, y: -50}
+  m_SizeDelta: {x: 448.4, y: 6.1}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &5842507120381686809
 CanvasRenderer:

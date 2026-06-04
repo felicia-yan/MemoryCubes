@@ -36,8 +36,14 @@ public class GroupUIManager : MonoBehaviour
     [SerializeField] private Transform stepsCompletedContainer; // VerticalLayoutGroup for done items
     [SerializeField] private GameObject stepsCompletedRowPrefab;
 
-    [SerializeField] private GameObject stepsPlaceCueRoot;      // "Place cube at bottom" instruction
-    [SerializeField] private TextMeshProUGUI stepsPlaceCueText;
+    // [SerializeField] private GameObject stepsPlaceCueRoot;      // "Place cube at bottom" instruction
+    // [SerializeField] private TextMeshProUGUI stepsPlaceCueText;
+
+    [SerializeField] private CanvasGroup toDoCanvasGroup;
+    [SerializeField] private CanvasGroup stepsCanvasGroup;
+
+
+
 
     // ── Cube colors (match ReminderManager) ───────────────────────────
     private static readonly Dictionary<int, Color32> CubeColors = new()
@@ -57,9 +63,28 @@ public class GroupUIManager : MonoBehaviour
         { 3, new Color32(210, 255, 153, 255) },
     };
 
+    [SerializeField] private TextMeshProUGUI debugText;
+
     // ─────────────────────────────────────────────────────────────────
     // Public API
     // ─────────────────────────────────────────────────────────────────
+
+    void Awake()
+    {
+        if (toDoCanvasGroup == null && toDoPanel != null)
+            toDoCanvasGroup = toDoPanel.GetComponent<CanvasGroup>();
+
+        if (stepsCanvasGroup == null && stepsPanel != null)
+            stepsCanvasGroup = stepsPanel.GetComponent<CanvasGroup>();
+    }
+
+    void Start()
+    {
+        GameObject debugCanvas = GameObject.Find("DebugCanvas");
+        if (debugCanvas != null) {
+            debugText = debugCanvas.GetComponentInChildren<TextMeshProUGUI>();
+        }
+    }
 
     /// <summary>
     /// Call this from GestureDetection.RefreshGroupUI().
@@ -68,9 +93,10 @@ public class GroupUIManager : MonoBehaviour
     public void Refresh(GroupUIData data)
     {
         bool isOrdered = data.groupType == GestureDetection.GroupType.Ordered;
+        debugText.text = $"Refresh: isOrdered={isOrdered}, items={data.items.Count}";
 
-        toDoPanel.SetActive(!isOrdered);
-        stepsPanel.SetActive(isOrdered);
+        SetPanelVisible(toDoCanvasGroup, !isOrdered);
+        SetPanelVisible(stepsCanvasGroup, isOrdered);
 
         if (isOrdered)
             RefreshSteps(data);
@@ -78,8 +104,19 @@ public class GroupUIManager : MonoBehaviour
             RefreshToDo(data);
 
         // Hide "place cue" if nothing was just completed
-        if (stepsPlaceCueRoot != null)
-            stepsPlaceCueRoot.SetActive(data.justCompletedID >= 0 && isOrdered);
+        // if (stepsPlaceCueRoot != null)
+        //     stepsPlaceCueRoot.SetActive(data.justCompletedID >= 0 && isOrdered);
+        ForceRelayout();
+    }
+
+    void SetPanelVisible(CanvasGroup canvasGroup, bool visible)
+    {
+        if (canvasGroup == null) {
+            debugText.text = "CanvasGroup is null in SetPanelVisible!";
+            return;
+        }
+        canvasGroup.alpha = visible ? 1f : 0f;
+        canvasGroup.interactable = visible ? true : false; 
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -108,6 +145,9 @@ public class GroupUIManager : MonoBehaviour
         SetTMP(row, "IconText",  item.icon);
         SetTMP(row, "TimeText",  FormatTime(item.triggerTime));
 
+        // Show strikethrough
+        row.transform.Find("Strikethrough")?.gameObject.SetActive(completed);
+
         // Checkbox
         Transform cb = row.transform.Find("Checkbox");
         if (cb != null)
@@ -119,7 +159,7 @@ public class GroupUIManager : MonoBehaviour
         }
 
         // Row tint
-        Image bg = row.transform.Find("Background")?.GetComponent<Image>();
+        Image bg = row.transform.GetComponent<Image>();
         if (bg != null)
         {
             if (completed)
@@ -155,7 +195,7 @@ public class GroupUIManager : MonoBehaviour
             stepsNowSection.SetActive(true);
             var now = pending[0];
 
-            if (stepsNowNumber != null) stepsNowNumber.text = $"({now.orderIndex + 1})";
+            if (stepsNowNumber != null) stepsNowNumber.text = $"{now.orderIndex + 1}";
             if (stepsNowIcon   != null) stepsNowIcon.text   = now.icon;
             if (stepsNowTask   != null) stepsNowTask.text   = now.task;
             if (stepsNowTime   != null) stepsNowTime.text   = FormatTime(now.triggerTime);
@@ -186,17 +226,123 @@ public class GroupUIManager : MonoBehaviour
         }
 
         // ── PLACE CUE ────────────────────────────────────────────────
-        if (stepsPlaceCueRoot != null && data.justCompletedID >= 0)
-        {
-            stepsPlaceCueRoot.SetActive(true);
-            if (stepsPlaceCueText != null)
-                stepsPlaceCueText.text = "Place this cube at the bottom of the stack";
-        }
+        // if (stepsPlaceCueRoot != null && data.justCompletedID >= 0)
+        // {
+        //     stepsPlaceCueRoot.SetActive(true);
+        //     if (stepsPlaceCueText != null)
+        //         stepsPlaceCueText.text = "Place this cube at the bottom of the stack";
+        // }
+    }
+
+    void RebuildLayouts()
+    {
+        Canvas.ForceUpdateCanvases();
+
+        RebuildIfPresent(toDoActiveContainer);
+        RebuildIfPresent(toDoCompletedContainer);
+        RebuildIfPresent(toDoPanel?.transform);
+        RebuildIfPresent(stepsNowSection?.transform);
+        RebuildIfPresent(stepsNextContainer);
+        RebuildIfPresent(stepsCompletedContainer);
+        RebuildIfPresent(stepsPanel?.transform);
+        RebuildIfPresent(transform);
+
+        FitActivePanelHeight();
+        StartCoroutine(RebuildLayoutsNextFrame());
+    }
+
+    System.Collections.IEnumerator RebuildLayoutsNextFrame()
+    {
+        yield return null;
+        Canvas.ForceUpdateCanvases();
+
+        RebuildIfPresent(toDoActiveContainer);
+        RebuildIfPresent(toDoCompletedContainer);
+        RebuildIfPresent(toDoPanel?.transform);
+        RebuildIfPresent(stepsNextContainer);
+        RebuildIfPresent(stepsCompletedContainer);
+        RebuildIfPresent(stepsPanel?.transform);
+        RebuildIfPresent(transform);
+        FitActivePanelHeight();
+    }
+
+    void RebuildIfPresent(Transform target)
+    {
+        if (target == null) return;
+        RectTransform rect = target.GetComponent<RectTransform>();
+        if (rect != null)
+            LayoutRebuilder.ForceRebuildLayoutImmediate(rect);
+    }
+
+    void FitActivePanelHeight()
+    {
+        if (toDoCanvasGroup != null && toDoCanvasGroup.alpha > 0.5f)
+            SetPanelHeight(toDoPanel, CalculateToDoPanelHeight());
+        else if (stepsCanvasGroup != null && stepsCanvasGroup.alpha > 0.5f)
+            SetPanelHeight(stepsPanel, CalculateStepsPanelHeight());
+    }
+
+    float CalculateToDoPanelHeight()
+    {
+        float height = 70f;
+        height += SumChildrenHeight(toDoActiveContainer);
+
+        if (toDoCompletedContainer != null && toDoCompletedContainer.childCount > 0)
+            height += 40f + SumChildrenHeight(toDoCompletedContainer);
+
+        return Mathf.Max(height, 160f);
+    }
+
+    float CalculateStepsPanelHeight()
+    {
+        float height = 70f;
+
+        if (stepsNowSection != null && stepsNowSection.activeSelf)
+            height += Mathf.Max(100f, GetRectHeight(stepsNowSection.transform));
+
+        if (stepsNextContainer != null && stepsNextContainer.childCount > 0)
+            height += 50f + GetRectHeight(stepsNextContainer);
+
+        if (stepsCompletedContainer != null && stepsCompletedContainer.childCount > 0)
+            height += 40f + SumChildrenHeight(stepsCompletedContainer);
+
+        return Mathf.Max(height, 220f);
+    }
+
+    float SumChildrenHeight(Transform container)
+    {
+        if (container == null) return 0f;
+
+        float height = 0f;
+        foreach (RectTransform child in container)
+            height += Mathf.Max(45f, GetRectHeight(child));
+
+        return height;
+    }
+
+    float GetRectHeight(Transform target)
+    {
+        RectTransform rect = target as RectTransform;
+        if (rect == null)
+            rect = target.GetComponent<RectTransform>();
+
+        if (rect == null) return 0f;
+
+        float preferred = LayoutUtility.GetPreferredHeight(rect);
+        return preferred > 0f ? preferred : rect.rect.height;
+    }
+
+    void SetPanelHeight(GameObject panel, float height)
+    {
+        RectTransform rect = panel.GetComponent<RectTransform>();
+        if (rect == null) return;
+
+        rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, height);
     }
 
     void ApplyStepsNextCell(GameObject cell, GroupItemData item)
     {
-        SetTMP(cell, "NumberText", $"({item.orderIndex + 1})");
+        SetTMP(cell, "NumberText", $"{item.orderIndex + 1}");
         SetTMP(cell, "IconText",   item.icon);
         SetTMP(cell, "TaskText",   item.task);
 
@@ -214,7 +360,7 @@ public class GroupUIManager : MonoBehaviour
 
     void ApplyStepsCompletedRow(GameObject row, GroupItemData item)
     {
-        SetTMP(row, "NumberText", $"({item.orderIndex + 1})");
+        SetTMP(row, "NumberText", $"{item.orderIndex + 1}");
         SetTMP(row, "IconText",   item.icon);
         SetTMP(row, "TaskText",   $"<s>{item.task}</s>");
         SetTMP(row, "TimeText",   FormatTime(item.triggerTime));
@@ -233,8 +379,7 @@ public class GroupUIManager : MonoBehaviour
     // Helpers
     // ─────────────────────────────────────────────────────────────────
 
-    void ClearChildren(Transform parent)
-    {
+    void ClearChildren(Transform parent) {
         if (parent == null) return;
         foreach (Transform child in parent)
             Destroy(child.gameObject);
@@ -258,6 +403,13 @@ public class GroupUIManager : MonoBehaviour
 
     string FormatTime(TimeSpan t) =>
         DateTime.Today.Add(t).ToString("h:mm tt");
+    
+
+    void ForceRelayout()
+    {
+        Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(GetComponent<RectTransform>());
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────

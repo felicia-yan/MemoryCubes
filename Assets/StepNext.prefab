@@ -67,8 +67,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: \uf254
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 97df51c45c3cc4ecb89d9033bfd5eaee, type: 2}
-  m_sharedMaterial: {fileID: -8228252684423825347, guid: 97df51c45c3cc4ecb89d9033bfd5eaee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 00caf12f8c3b5430eb6a9063558750b2, type: 2}
+  m_sharedMaterial: {fileID: -4650300374160386575, guid: 00caf12f8c3b5430eb6a9063558750b2, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -177,7 +177,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 2241.4048, y: -40.175}
-  m_SizeDelta: {x: 0, y: 80.35}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &3184537884422389076
 CanvasRenderer:
@@ -216,7 +216,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 2
+  m_PixelsPerUnitMultiplier: 3
 --- !u!114 &6959012931741409215
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -230,12 +230,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.HorizontalLayoutGroup
   m_Padding:
-    m_Left: 20
-    m_Right: 20
-    m_Top: 0
-    m_Bottom: 0
+    m_Left: 30
+    m_Right: 30
+    m_Top: 20
+    m_Bottom: 15
   m_ChildAlignment: 4
-  m_Spacing: 20
+  m_Spacing: 15
   m_ChildForceExpandWidth: 1
   m_ChildForceExpandHeight: 1
   m_ChildControlWidth: 0
@@ -256,7 +256,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.ContentSizeFitter
   m_HorizontalFit: 2
-  m_VerticalFit: 0
+  m_VerticalFit: 1
 --- !u!1 &1060488749318747294
 GameObject:
   m_ObjectHideFlags: 0
@@ -505,7 +505,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 168.705, y: -40.175}
+  m_AnchoredPosition: {x: 168.705, y: -35}
   m_SizeDelta: {x: 118.69, y: 25}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &4553018322064339153

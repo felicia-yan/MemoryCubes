@@ -172,7 +172,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 340.8, y: 62.6}
+  m_SizeDelta: {x: 340.8, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &8179563816709618935
 CanvasRenderer:
@@ -202,7 +202,11 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: TO-DO
+  m_text: '
+
+    TO-DO
+
+    \n'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 48e9b62d3ca8848e093de8e85c06e3e0, type: 2}
   m_sharedMaterial: {fileID: 8945808247145011265, guid: 48e9b62d3ca8848e093de8e85c06e3e0, type: 2}
@@ -363,7 +367,6 @@ GameObject:
   - component: {fileID: 5728098771897300587}
   - component: {fileID: 6288100005209580961}
   - component: {fileID: 3404300332164912127}
-  - component: {fileID: 5685799444839185193}
   - component: {fileID: 3904033622983894068}
   m_Layer: 3
   m_Name: CanvasRoot
@@ -464,32 +467,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1214007333139408913}
   m_CullTransparentMesh: 1
---- !u!114 &5685799444839185193
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1214007333139408913}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 30649d3a9faa99c48a7b1166b86bf2a0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_Padding:
-    m_Left: 0
-    m_Right: 0
-    m_Top: 0
-    m_Bottom: 0
-  m_ChildAlignment: 0
-  m_Spacing: 50
-  m_ChildForceExpandWidth: 0
-  m_ChildForceExpandHeight: 0
-  m_ChildControlWidth: 0
-  m_ChildControlHeight: 0
-  m_ChildScaleWidth: 0
-  m_ChildScaleHeight: 0
-  m_ReverseArrangement: 0
 --- !u!114 &3904033622983894068
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -530,9 +507,9 @@ GameObject:
   - component: {fileID: 2006559455049518936}
   - component: {fileID: 2925899350604256413}
   - component: {fileID: 5732841213980501331}
-  - component: {fileID: 3345087998399688291}
   - component: {fileID: 654464212896010167}
   - component: {fileID: 2369592523043513233}
+  - component: {fileID: 9175119431085724930}
   m_Layer: 3
   m_Name: StepsPanel
   m_TagString: Untagged
@@ -563,9 +540,9 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 1050, y: -466.31}
+  m_AnchoredPosition: {x: 250, y: 0.0001373291}
   m_SizeDelta: {x: 500, y: 0}
-  m_Pivot: {x: 1, y: 0}
+  m_Pivot: {x: 0.5, y: 1}
 --- !u!222 &2006559455049518936
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -617,19 +594,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   borderRadius: {x: 20, y: 20, z: 20, w: 20}
---- !u!114 &3345087998399688291
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2344294680302691193}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 31a19414c41e5ae4aae2af33fee712f6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_ShowMaskGraphic: 1
 --- !u!114 &654464212896010167
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -670,6 +634,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.ContentSizeFitter
   m_HorizontalFit: 0
   m_VerticalFit: 2
+--- !u!225 &9175119431085724930
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2344294680302691193}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 1
 --- !u!1 &2463290561878701830
 GameObject:
   m_ObjectHideFlags: 0
@@ -1182,8 +1158,8 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 500.1, y: 100}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_SizeDelta: {x: 500.1, y: 0}
+  m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &1027969489356346305
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1201,14 +1177,14 @@ MonoBehaviour:
     m_Right: 0
     m_Top: 0
     m_Bottom: 0
-  m_ChildAlignment: 0
+  m_ChildAlignment: 1
   m_Spacing: 0
   m_ChildForceExpandWidth: 1
   m_ChildForceExpandHeight: 1
   m_ChildControlWidth: 0
   m_ChildControlHeight: 0
   m_ChildScaleWidth: 0
-  m_ChildScaleHeight: 0
+  m_ChildScaleHeight: 1
   m_ReverseArrangement: 0
 --- !u!1 &5145330330593792154
 GameObject:
@@ -1225,6 +1201,7 @@ GameObject:
   - component: {fileID: 5062534712555308799}
   - component: {fileID: 2379583549273941062}
   - component: {fileID: 3188494140498342785}
+  - component: {fileID: 6196283247577340240}
   m_Layer: 3
   m_Name: ToDoPanel
   m_TagString: Untagged
@@ -1250,10 +1227,10 @@ RectTransform:
   m_Father: {fileID: 8430362500120362505}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 500, y: -262.6}
-  m_SizeDelta: {x: 500, y: 0}
-  m_Pivot: {x: 1, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0.000045776367}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 1}
 --- !u!222 &5798976924272775836
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -1333,16 +1310,16 @@ MonoBehaviour:
   m_Padding:
     m_Left: 0
     m_Right: 0
-    m_Top: 0
+    m_Top: 30
     m_Bottom: 0
   m_ChildAlignment: 1
   m_Spacing: 0
   m_ChildForceExpandWidth: 1
   m_ChildForceExpandHeight: 1
   m_ChildControlWidth: 0
-  m_ChildControlHeight: 0
-  m_ChildScaleWidth: 0
-  m_ChildScaleHeight: 0
+  m_ChildControlHeight: 1
+  m_ChildScaleWidth: 1
+  m_ChildScaleHeight: 1
   m_ReverseArrangement: 0
 --- !u!114 &3188494140498342785
 MonoBehaviour:
@@ -1358,6 +1335,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.ContentSizeFitter
   m_HorizontalFit: 0
   m_VerticalFit: 2
+--- !u!225 &6196283247577340240
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5145330330593792154}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 1
 --- !u!1 &5715121834242167276
 GameObject:
   m_ObjectHideFlags: 0
@@ -1507,7 +1496,6 @@ GameObject:
   - component: {fileID: 7506792125827687972}
   - component: {fileID: 1611711370855029493}
   - component: {fileID: 6860771122678615736}
-  - component: {fileID: 988505696156078528}
   - component: {fileID: 4011747398775435895}
   m_Layer: 0
   m_Name: GroupUI
@@ -1723,18 +1711,6 @@ MonoBehaviour:
   _whenUnselectedHoveredWithObject:
     m_PersistentCalls:
       m_Calls: []
---- !u!225 &988505696156078528
-CanvasGroup:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6304957153628750664}
-  m_Enabled: 1
-  m_Alpha: 1
-  m_Interactable: 1
-  m_BlocksRaycasts: 1
-  m_IgnoreParentGroups: 0
 --- !u!114 &4011747398775435895
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1761,8 +1737,9 @@ MonoBehaviour:
   stepsNextItemPrefab: {fileID: 806855353847621225, guid: 929d7a9c7c13a43b0b37da01e271620b, type: 3}
   stepsCompletedContainer: {fileID: 4477869936911835952}
   stepsCompletedRowPrefab: {fileID: 7066102023388801875, guid: 0c9ad6c8c50c444e8a6466f0c29212fe, type: 3}
-  stepsPlaceCueRoot: {fileID: 0}
-  stepsPlaceCueText: {fileID: 0}
+  toDoCanvasGroup: {fileID: 6196283247577340240}
+  stepsCanvasGroup: {fileID: 9175119431085724930}
+  debugText: {fileID: 0}
 --- !u!1 &6798272825585770378
 GameObject:
   m_ObjectHideFlags: 0
@@ -1797,7 +1774,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 500.1, y: 100}
+  m_SizeDelta: {x: 500.1, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &7659532302260938112
 MonoBehaviour:
@@ -2019,10 +1996,10 @@ MonoBehaviour:
   m_Spacing: 0
   m_ChildForceExpandWidth: 1
   m_ChildForceExpandHeight: 1
-  m_ChildControlWidth: 0
+  m_ChildControlWidth: 1
   m_ChildControlHeight: 0
-  m_ChildScaleWidth: 0
-  m_ChildScaleHeight: 0
+  m_ChildScaleWidth: 1
+  m_ChildScaleHeight: 1
   m_ReverseArrangement: 0
 --- !u!1 &8152392958426328786
 GameObject:

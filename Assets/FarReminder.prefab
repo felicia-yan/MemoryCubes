@@ -542,7 +542,7 @@ GameObject:
   - component: {fileID: 8045598863395724298}
   - component: {fileID: 1444872870707129017}
   m_Layer: 5
-  m_Name: TimeText
+  m_Name: TimeRemainingText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
