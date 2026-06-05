@@ -34,6 +34,7 @@ public class VoiceManager : MonoBehaviour {
         { 1, new Color32(255, 0, 220, 170) },
         { 2, new Color32(0, 180, 225, 170) },
         { 3, new Color32(170, 255, 0, 170) },
+        { 7, new Color32(250, 122,   3, 255) },
     };
 
     // Instantiating the reminder
@@ -69,16 +70,13 @@ public class VoiceManager : MonoBehaviour {
     // On parse, show the preview to the user to verify the parsed task and/or time
     private void OnWitResponse(WitResponseNode response) {
         if (currentMode == VoiceMode.DeleteReminder) {
-            string intent = "";
-
-            if (response["intents"].Count > 0)
-            {
-                intent = response["intents"][0]["name"];
-            }
-
-            if (intent == "delete_reminder")
-            {
-                DeleteCurrentReminder();
+            string transcript = response["text"];
+    
+            if (!string.IsNullOrEmpty(transcript)) {
+                string lower = transcript.ToLowerInvariant();
+                if (lower.Contains("delete") || lower.Contains("remove")) {
+                    DeleteCurrentReminder();
+                }
             }
 
             return;

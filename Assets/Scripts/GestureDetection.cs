@@ -168,6 +168,8 @@ public class GestureDetection : MonoBehaviour
     void Start()
     {
         SetDim(false); 
+        Camera.main.transparencySortMode = TransparencySortMode.CustomAxis;
+        Camera.main.transparencySortAxis = new Vector3(0, 0, 1); // sort along Z (depth)
         if (voiceManager != null)
             voiceManager.OnReminderCreated += HandleReminderCreated;
     }
@@ -253,24 +255,6 @@ public class GestureDetection : MonoBehaviour
     void UpdateTouchedCubes()
     {
         List<int> previouslyTouched = new List<int>(touchedCubeIDs);
-        foreach (int id in _detectedIDs) {   
-            if (_cubes[id].isTouched && !previouslyTouched.Contains(id))
-            {
-                _anchoredCubeIDs.Remove(id);
-                _cubeAnchors.Remove(id);
-
-                bool hasReminder = reminderManager.HasReminder(id);
-                if (_activeVoiceCube == -1) {
-                    _activeVoiceCube = id;
-                    if (hasReminder) {
-                        voiceManager.BeginDeleteListening(id);
-                    }
-                    else {
-                        voiceManager.BeginReminderCreation(id);
-                    }
-                }
-            }
-        }
 
         foreach (int id in _detectedIDs)
             _cubes[id].isTouched = false;
@@ -316,12 +300,19 @@ public class GestureDetection : MonoBehaviour
                 }
             }
 
-            if (touched) {
+            if (touched)
+            {
                 _cubes[id].isTouched = true;
                 touchedCubeIDs.Add(id);
+                _cubes[id].lastTouchedTime = Time.time;
             }
         }
 
+        // Increment touchHeldTime for all currently touched cubes
+        foreach (int id in touchedCubeIDs)
+            _cubes[id].touchHeldTime += Time.deltaTime;
+
+        // Handle touch-start
         foreach (int id in _detectedIDs)
         {
             if (_cubes[id].isTouched && !previouslyTouched.Contains(id))
@@ -329,37 +320,31 @@ public class GestureDetection : MonoBehaviour
                 _anchoredCubeIDs.Remove(id);
                 _cubeAnchors.Remove(id);
                 _gestureHelpShown.Remove(id);
-                
-                const float TOUCH_GRACE = 0.4f;
-                float timeSinceLastTouch = Time.time - _cubes[id].lastTouchedTime;
-                bool gapWasLong = timeSinceLastTouch > TOUCH_GRACE;
-                if (gapWasLong)
-                    _cubes[id].touchHeldTime = 0f;
+                _cubes[id].touchHeldTime = 0f;
+                _cubes[id].lastTouchedTime = Time.time;
 
-                _cubes[id].lastTouchedTime = Time.time; // ← stamp AFTER the grace check
-
-                // If touching and no reminder, active voice input
                 bool hasReminder = reminderManager.HasReminder(id);
-                 if (_activeVoiceCube == -1) {
+                if (_activeVoiceCube == -1)
+                {
                     _activeVoiceCube = id;
-                    if (hasReminder) {
+                    if (hasReminder)
                         voiceManager.BeginDeleteListening(id);
-                    }
-                    else {
+                    else
                         voiceManager.BeginReminderCreation(id);
-                    }
                 }
             }
         }
 
+        // Handle touch-end
         foreach (int id in previouslyTouched)
         {
             if (!touchedCubeIDs.Contains(id) && !_anchoredCubeIDs.Contains(id))
             {
-                if (id == _activeVoiceCube) {
+                if (id == _activeVoiceCube)
+                {
                     voiceManager.CancelListening();
                     _activeVoiceCube = -1;
-                    continue; 
+                    continue;
                 }
 
                 if (_cubeAnchors.TryGetValue(id, out OVRSpatialAnchor old) && old != null)
@@ -373,6 +358,7 @@ public class GestureDetection : MonoBehaviour
             }
         }
 
+        // Outlines
         foreach (var kvp in ArUcoTrackingAppCoordinator.m_markerGameObjectDictionary)
         {
             int id = kvp.Key;
@@ -384,6 +370,7 @@ public class GestureDetection : MonoBehaviour
                 SetOutline(kvp.Value, false);
         }
 
+        // Cube child mesh visibility
         foreach (int id in _detectedIDs)
         {
             bool touched = _cubes[id].isTouched;
@@ -395,10 +382,12 @@ public class GestureDetection : MonoBehaviour
 
         bool anyTouched = touchedCubeIDs.Count > 0;
         SetDim(anyTouched);
-        if (!anyTouched) {
+        if (!anyTouched)
+        {
             voiceManager.CancelListening();
             _activeVoiceCube = -1;
         }
+
         UpdateGestureHelp();
     }
 
@@ -414,7 +403,7 @@ public class GestureDetection : MonoBehaviour
             return;
         }
 
-        cube.touchHeldTime += Time.deltaTime;
+        // cube.touchHeldTime += Time.deltaTime;
         if (cube.touchHeldTime < 0.2f) return;
 
         Vector3 pos = cube.transform.position;
@@ -611,18 +600,13 @@ public class GestureDetection : MonoBehaviour
     // GROUPING INTO ROUTINES
     // =====================================================
 
-    void HandleCubeGrouping()
-    {
-        // if (_activeVoiceCube != -1)
-        //     return;
-    
-        // COMBINE
-        for (int i = 0; i < touchedCubeIDs.Count; i++)
+    void HandleCubeGrouping() {
+        // COMBINE: touched cube near any other detected cube (not just other touched cubes)
+        foreach (int idA in touchedCubeIDs)
         {
-            for (int j = i + 1; j < touchedCubeIDs.Count; j++)
+            foreach (int idB in _detectedIDs)
             {
-                int idA = touchedCubeIDs[i];
-                int idB = touchedCubeIDs[j];
+                if (idA == idB) continue;
 
                 float dist = Vector3.Distance(
                     _cubes[idA].transform.position,
@@ -648,6 +632,17 @@ public class GestureDetection : MonoBehaviour
 
     void CombineCubes(int idA, int idB)
     {
+        // Debugging ugh...
+        // if (cubeToGroup.TryGetValue(idA, out CubeGroup dbgGroup))
+        // {
+        //     systemText.text =
+        //         $"idA={idA} groupSize={dbgGroup.cubeIDs.Count} ids={string.Join(",", dbgGroup.cubeIDs)}";
+        // }
+        // else
+        // {
+        //     systemText.text = $"idA={idA} not in a group yet";
+        // }
+
         if (!reminderManager.HasReminder(idA) || !reminderManager.HasReminder(idB)) return;
 
         ResetShakeState(idA);
@@ -722,6 +717,7 @@ public class GestureDetection : MonoBehaviour
             if (!groups.ContainsKey(group.groupID)) continue;
             if (_lockedGroups.Contains(group.groupID)) continue;
             if (group.cubeIDs.Count <= 1) continue;
+            
             if (!group.cubeIDs.Any(id => _cubes[id].isTouched)) continue;
 
             List<HashSet<int>> components = BuildConnectedComponents(group);
@@ -731,17 +727,40 @@ public class GestureDetection : MonoBehaviour
                 .OrderByDescending(component => component.Count)
                 .First();
 
-            group.cubeIDs = largest;
-            foreach (int id in largest)
-                cubeToGroup[id] = group;
+            // Handle the largest component
+            if (largest.Count == 1)
+            {
+                int soloId = largest.First();
+                cubeToGroup.Remove(soloId);
+                reminderManager.SetCubeGrouped(soloId, false);
+                if (group.groupUI != null) Destroy(group.groupUI);
+                groups.Remove(group.groupID);
+                _pendingGroupTypes.Remove(group.groupID);
+                _pendingGroupTypeTimers.Remove(group.groupID);
+            }
+            else
+            {
+                group.cubeIDs = largest;
+                foreach (int id in largest)
+                    cubeToGroup[id] = group;
 
-            UpdateGroupSemantics(group);
-            RefreshGroupUI(group);
-            SyncGroupVisibility(group);
+                UpdateGroupSemantics(group);
+                RefreshGroupUI(group);
+                SyncGroupVisibility(group);
+            }
 
+            // Handle remaining components
             foreach (HashSet<int> component in components)
             {
                 if (component == largest) continue;
+
+                if (component.Count == 1)
+                {
+                    int soloId = component.First();
+                    cubeToGroup.Remove(soloId);
+                    reminderManager.SetCubeGrouped(soloId, false);
+                    continue;
+                }
 
                 CubeGroup newGroup = new CubeGroup();
                 newGroup.groupID = nextGroupID++;
@@ -902,6 +921,7 @@ public class GestureDetection : MonoBehaviour
 
                 systemText.text = $"Group {group.groupID} type changed to {group.type}";
                 RefreshGroupUI(group);
+                SyncGroupVisibility(group);
             }
         }
         else
@@ -1012,24 +1032,32 @@ public class GestureDetection : MonoBehaviour
         RefreshGroupUI(group);
     }
 
-    void EnsureCorrectUIPrefab(CubeGroup group)
-    {
+    void EnsureCorrectUIPrefab(CubeGroup group) {
         if (group.groupUI != null && group.spawnedUIType == group.type)
-            return; // already correct prefab, no swap needed
+            return;
 
-        // Destroy old UI
         if (group.groupUI != null)
             Destroy(group.groupUI);
 
-        // Spawn correct prefab
-        Vector3 center = GetGroupCenter(group) + Vector3.up * 0.25f;
+        Vector3 center = GetGroupCenter(group);
+        Vector3 awayFromCamera = (center - Camera.main.transform.position).normalized;
+
+        float highestY = float.MinValue;
+        foreach (int id in group.cubeIDs)
+            highestY = Mathf.Max(highestY, _cubes[id].transform.position.y);
+
+        Vector3 uiPos = center;
+        uiPos.y = highestY + 0.15f;
+
         GameObject prefab = group.type == GroupType.Ordered ? stepsUIPrefab : toDoUIPrefab;
-        group.groupUI = Instantiate(prefab, center, Quaternion.identity);
+        group.groupUI = Instantiate(prefab, uiPos + awayFromCamera * 0.1f, Quaternion.identity);
         group.spawnedUIType = group.type;
     }
 
     void RefreshGroupUI(CubeGroup group)
     {
+        Debug.Log($"RefreshGroupUI group={group.groupID} cubes={string.Join(",", group.cubeIDs)}");
+
         EnsureCorrectUIPrefab(group);
         group.groupUI.SetActive(true);
 
@@ -1067,6 +1095,7 @@ public class GestureDetection : MonoBehaviour
         }
 
         GroupUIBase ui = group.groupUI.GetComponent<GroupUIBase>();
+        systemText.text = $"Passing {data.items.Count} items to UI";
         if (ui != null) ui.Refresh(data);
     }
 
@@ -1196,7 +1225,7 @@ public class GestureDetection : MonoBehaviour
         if (_homeMarkers.TryGetValue(id, out GameObject oldMarker))
             Destroy(oldMarker);
 
-        GameObject marker = Instantiate(homeMarkerPrefab, anchorPos, Quaternion.identity);
+        GameObject marker = Instantiate(homeMarkerPrefab, anchorPos + Vector3.down * 0.025f, Quaternion.identity);
         _homeMarkers[id] = marker;
         
         Color cubeColor = reminderManager.GetCubeColor(id);
@@ -1245,12 +1274,14 @@ public class GestureDetection : MonoBehaviour
             // Unlock
             _lockedGroups.Remove(targetGroup.groupID);
             Debug.Log($"Group {targetGroup.groupID} unlocked");
+            systemText.text = $"Group {targetGroup.groupID} UNlocked";
+
         }
         else
         {
             // Lock
             _lockedGroups.Add(targetGroup.groupID);
-            Debug.Log($"Group {targetGroup.groupID} locked");
+            systemText.text = $"Group {targetGroup.groupID} locked";
         }
     }
 
@@ -1263,13 +1294,14 @@ public class GestureDetection : MonoBehaviour
         {
             // Unlock
             _lockedGroups.Remove(targetGroup.groupID);
-            Debug.Log($"Group {targetGroup.groupID} unlocked");
+            systemText.text = $"Group {targetGroup.groupID} UNlocked";
+
         }
         else
         {
             // Lock
             _lockedGroups.Add(targetGroup.groupID);
-            Debug.Log($"Group {targetGroup.groupID} locked");
+            systemText.text = $"Group {targetGroup.groupID} locked";
         }
     }
 
@@ -1318,22 +1350,39 @@ public class GestureDetection : MonoBehaviour
         return null;
     }
 
-    void UpdateLockedGroupVisibility() {
+    void UpdateLockedGroupVisibility()
+    {
+        // Track which cubes are currently managed by a group
+        HashSet<int> managedByGroup = new HashSet<int>();
+
         foreach (var group in groups.Values)
         {
-            if (!_lockedGroups.Contains(group.groupID)) continue;
             Vector3 center = GetGroupCenter(group);
-            foreach (int id in group.cubeIDs) {
+            bool isLocked = _lockedGroups.Contains(group.groupID);
+
+            foreach (int id in group.cubeIDs)
+            {
                 if (!_cubes.ContainsKey(id)) continue;
+                managedByGroup.Add(id);
 
-                float dist = Vector3.Distance(
-                    _cubes[id].transform.position, center);
-
-                bool awayFromGroup = dist > showReminderWhenAwayDistance;
-
-                // Show individual reminder when away, hide when back near group
-                reminderManager.SetCubeGrouped(id, !awayFromGroup);
+                if (isLocked)
+                {
+                    float dist = Vector3.Distance(_cubes[id].transform.position, center);
+                    bool awayFromGroup = dist > showReminderWhenAwayDistance;
+                    reminderManager.SetCubeGrouped(id, !awayFromGroup);
+                }
+                else
+                {
+                    reminderManager.SetCubeGrouped(id, true);
+                }
             }
+        }
+
+        // Any cube not in a group should always show its individual reminder
+        foreach (int id in _detectedIDs)
+        {
+            if (!managedByGroup.Contains(id))
+                reminderManager.SetCubeGrouped(id, false);
         }
     }
 
@@ -1381,9 +1430,10 @@ public class GestureDetection : MonoBehaviour
         UpdateGestureHelpUIPosition(id);
     }   
 
-    void ShowGestureHelp(int id)  {
+    void ShowGestureHelp(int id) {
         bool hasReminder = reminderManager.HasReminder(id);
-        if (hasReminder) {
+        bool inGroup = cubeToGroup.ContainsKey(id) && cubeToGroup[id].cubeIDs.Count > 1;
+        if (hasReminder && !inGroup) {
             gestureHelpUI.SetActive(true);
         }
     }

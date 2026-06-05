@@ -37,6 +37,7 @@ public class StepsGroupUI : GroupUIBase
         { 1, new Color32(255, 179, 246, 255) },
         { 2, new Color32(153, 229, 245, 255) },
         { 3, new Color32(210, 255, 153, 255) },
+        { 7, new Color32(250, 122,   3, 255) },
     };
 
     public override void Refresh(GroupUIData data)
@@ -107,8 +108,7 @@ public class StepsGroupUI : GroupUIBase
         if (numberObj != null)
         {
             Image circleBg = numberObj.GetComponent<Image>();
-            if (circleBg != null && CubeColors.TryGetValue(item.cubeId, out Color32 accentForCircle))
-                circleBg.color = accentForCircle;
+            circleBg.color = Color.black;
         }
     }
 
@@ -133,7 +133,9 @@ public class StepsGroupUI : GroupUIBase
     {
         if (parent == null) return;
         for (int i = parent.childCount - 1; i >= 0; i--)
-            DestroyImmediate(parent.GetChild(i).gameObject);
+        {
+            Destroy(parent.GetChild(i).gameObject);
+        }
     }
 
     void ForceRelayout()

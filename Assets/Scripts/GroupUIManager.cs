@@ -383,8 +383,11 @@ public class GroupUIManager : MonoBehaviour
 
     void ClearChildren(Transform parent) {
         if (parent == null) return;
+        List<GameObject> toDestroy = new List<GameObject>();
         foreach (Transform child in parent)
-            Destroy(child.gameObject);
+            toDestroy.Add(child.gameObject);
+        foreach (GameObject go in toDestroy)
+            DestroyImmediate(go);
     }
 
     void SetTMP(GameObject root, string childName, string text)

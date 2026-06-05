@@ -84,7 +84,9 @@ public class ToDoGroupUI : GroupUIBase
     {
         if (parent == null) return;
         for (int i = parent.childCount - 1; i >= 0; i--)
-            DestroyImmediate(parent.GetChild(i).gameObject);
+        {
+            Destroy(parent.GetChild(i).gameObject);
+        }
     }
 
     void ForceRelayout()

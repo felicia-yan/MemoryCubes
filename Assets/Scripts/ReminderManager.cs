@@ -74,11 +74,11 @@ public class ReminderManager : MonoBehaviour
         public const string Apple = "\uf5d1";
         public const string ShoppingBasket = "\uf291";
         public const string Kitchen = "\uf2e7";   // fa-utensils (best FA5 substitute for kitchen)
-        public const string BlenderPhone = "\uf6b6"; // fa-blender (cooking/kitchen)
+        public const string BlenderPhone = "\ue2eb"; // fa-blender (cooking/kitchen)
         public const string Mortar = "\uf5a1";    // fa-mortar-pestle
 
         // Water / Hydration
-        public const string GlassWater = "\uf000"; // fa-glass (FA5 solid, closest to glass of water)
+        public const string GlassWater = "\ue4f4"; // fa-glass (FA5 solid, closest to glass of water)
         public const string Tint = "\uf043";       // fa-tint (water drop)
         public const string Water = "\uf773";      // fa-water
 
@@ -104,7 +104,7 @@ public class ReminderManager : MonoBehaviour
 
         // Washing
         public const string Shower = "\uf2cc";
-        public const string Soap = "\uf06e";       // fa-eye was wrong; fa-soap is FA6 only — use hand-sparkles
+        public const string Soap = "\ue05e"; 
         public const string HandSparkles = "\ue05d"; // fa-hand-sparkles (FA5.13+)
         public const string Sink = "\uf2cc";       // no FA5 sink; reuse shower as closest substitute
         public const string Bath = "\uf2cd";       // fa-bath
@@ -244,8 +244,11 @@ public class ReminderManager : MonoBehaviour
             int cubeId = kvp.Key;
             ReminderUI ui = kvp.Value;
 
-            if (groupedCubes.Contains(cubeId))
+            if (groupedCubes.Contains(cubeId)) {
+                ui.nearPanel.SetActive(false);
+                ui.farPanel.SetActive(false);
                 continue;
+            }
 
             if (!ArUcoTrackingAppCoordinator.m_markerGameObjectDictionary.TryGetValue(cubeId, out GameObject cubeObj)) {
                 continue;
@@ -267,7 +270,6 @@ public class ReminderManager : MonoBehaviour
             float targetNearAlpha = showFar ? 0f : 1f;
             float targetFarAlpha = showFar ? 1f : 0f;
 
-            // Fade alpha
             ui.nearPanel.SetActive(!showFar);
             ui.farPanel.SetActive(showFar);
 
@@ -336,15 +338,21 @@ public class ReminderManager : MonoBehaviour
         };
 
         Canvas nearCanvas = nearPanel.GetComponent<Canvas>();
-        if (nearCanvas != null)
-            nearCanvas.sortingOrder = 10;
+        if (nearCanvas != null) {
+            nearCanvas.overrideSorting = true;
+            nearCanvas.sortingOrder = cubeId * 2;
+        }
 
         Canvas farCanvas = farPanel.GetComponent<Canvas>();
-        if (farCanvas != null)
-            farCanvas.sortingOrder = 10;
+        if (farCanvas != null) {
+            farCanvas.overrideSorting = true;
+            farCanvas.sortingOrder = cubeId * 2 + 1;
+        }
 
         ApplyDataToPanel(nearPanel, data);
         ApplyFarDataToPanel(farPanel, data);
+        nearPanel.SetActive(true);   // ensure near is visible by default
+        farPanel.SetActive(false);   // far starts hidden until distance check kicks in
 
         if (ReminderScheduler.Instance != null) {
             ReminderScheduler.Instance.ScheduleReminder(data);
@@ -392,6 +400,7 @@ public class ReminderManager : MonoBehaviour
         }
 
         reminderData.Remove(cubeId);
+        groupedCubes.Remove(cubeId);
 
         Debug.Log(
             $"Deleted reminder for cube {cubeId}");
@@ -719,6 +728,7 @@ public class ReminderManager : MonoBehaviour
         // update canvas groups if used
         ui.nearGroup = newNear ? newNear.GetComponent<CanvasGroup>() : null;
         ui.farGroup = newFar ? newFar.GetComponent<CanvasGroup>() : null;
+        ui.farPanel.SetActive(false);
     }
 
     public Color GetCubeColor(int cubeId) {
