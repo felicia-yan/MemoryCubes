@@ -30,10 +30,22 @@ public class GestureDetection : MonoBehaviour
         public float shakeTimer;
         public Vector3 lastRawVelocity;
         public float touchHeldTime;
-        public Vector3 filteredRawVelocity;
 
         public float spinTimer;
         public float pointHeldTime;
+
+        public Vector3 smoothedPosition;
+        public Vector3 smoothedVelocity;
+        public Vector3 lastSmoothedPosition;
+        public Vector3 lastSmoothedVelocity;
+
+        public bool smoothingInitialized;
+
+        public Quaternion smoothedRotation;
+        public bool rotationInitialized;
+
+        public float lastSeenTime;
+        public float lastTouchedTime;
     }
 
     private Dictionary<int, CubeState> _cubes = new Dictionary<int, CubeState>();
@@ -77,7 +89,13 @@ public class GestureDetection : MonoBehaviour
         public GroupType type = GroupType.Unordered;
         public GroupType spawnedUIType = GroupType.Unordered;
         public GameObject groupUI;
+
+        // Position smoothing
+        public Vector3 smoothedCenter;
+        public bool centerInitialized;
+
     }
+    [SerializeField] private float groupUIPositionSmoothing = 0.05f;
 
     [Header("Forming Routines")]
     private HashSet<int> _lockedGroups = new HashSet<int>();
@@ -101,7 +119,11 @@ public class GestureDetection : MonoBehaviour
     [SerializeField] private GroundPathArrow groundPathArrow;
     [SerializeField] private float awayFromHomeThreshold = 0.1f;
 
+    // Gesture thresholds
     [SerializeField] private float spinThreshold = 1.5f;
+    [SerializeField] private float shakeSpeedThreshold = 0.1f;
+    [SerializeField] [Range(0f, 1f)] private float positionSmoothing = 0.3f;
+    [SerializeField] [Range(0f, 1f)] private float rotationSmoothing = 0.1f;
     
     [SerializeField] private OVRHand leftHand;
     [SerializeField] private OVRHand rightHand;
@@ -132,6 +154,13 @@ public class GestureDetection : MonoBehaviour
     // Text for debugging
     [SerializeField] private GameObject systemCanvas; 
     [SerializeField] private TextMeshProUGUI systemText; 
+    
+    // Overlay for instructions about allowed gestures
+    [SerializeField] private GameObject gestureHelpUI;
+    [SerializeField] private float gestureHelpDelay = 4.0f;
+
+    private HashSet<int> _gestureHelpShown = new();
+
 
 
     // =====================================================
@@ -156,13 +185,13 @@ public class GestureDetection : MonoBehaviour
         TickJustCompleted();
         UpdateLockedGroupVisibility();
 
-        foreach (int id in _detectedIDs)
-        {
+        foreach (int id in _detectedIDs) {
             CubeState cube = _cubes[id];
+            bool recentlyTouched = cube.isTouched ||
+                (Time.time - cube.lastTouchedTime < 0.35f &&
+                Time.time - cube.lastSeenTime < 0.35f);
 
-            if (!cube.isTouched)
-                continue;
-
+            if (!recentlyTouched) continue;
             DetectShake(id, cube);
         }
     }
@@ -195,19 +224,13 @@ public class GestureDetection : MonoBehaviour
                     lastPosition = cubeObj.transform.position,
                     lastRotation = cubeObj.transform.rotation,
                     lastRawPosition = cubeObj.transform.position,
-                    lastRawVelocity = Vector3.zero
+                    lastRawVelocity = Vector3.zero, 
+                    lastSeenTime = Time.time 
                 };
 
                 if (!_initializedCubeIDs.Contains(id))
                 {
                     _initializedCubeIDs.Add(id);
-                    // int taskIdx = UnityEngine.Random.Range(0, tasks.Count);
-                    // string task = tasks[taskIdx];
-                    // reminderManager.CreateReminder(
-                    //     id,
-                    //     task,
-                    //     DateTime.Now.TimeOfDay.Add(TimeSpan.FromMinutes(10)),
-                    //     "none");
                 }
             }
             else
@@ -222,6 +245,7 @@ public class GestureDetection : MonoBehaviour
                 {
                     _cubes[id].transform = cubeObj.transform;
                 }
+                _cubes[id].lastSeenTime = Time.time; 
             }
         }
     }
@@ -232,14 +256,18 @@ public class GestureDetection : MonoBehaviour
         foreach (int id in _detectedIDs) {   
             if (_cubes[id].isTouched && !previouslyTouched.Contains(id))
             {
-                _cubes[id].touchHeldTime = 0f; // just picked up, start fresh
                 _anchoredCubeIDs.Remove(id);
                 _cubeAnchors.Remove(id);
 
                 bool hasReminder = reminderManager.HasReminder(id);
-                if (!hasReminder && _activeVoiceCube == -1) {
+                if (_activeVoiceCube == -1) {
                     _activeVoiceCube = id;
-                    voiceManager.BeginReminderCreation(id);               
+                    if (hasReminder) {
+                        voiceManager.BeginDeleteListening(id);
+                    }
+                    else {
+                        voiceManager.BeginReminderCreation(id);
+                    }
                 }
             }
         }
@@ -288,8 +316,7 @@ public class GestureDetection : MonoBehaviour
                 }
             }
 
-            if (touched)
-            {
+            if (touched) {
                 _cubes[id].isTouched = true;
                 touchedCubeIDs.Add(id);
             }
@@ -301,12 +328,26 @@ public class GestureDetection : MonoBehaviour
             {
                 _anchoredCubeIDs.Remove(id);
                 _cubeAnchors.Remove(id);
+                _gestureHelpShown.Remove(id);
+                
+                const float TOUCH_GRACE = 0.4f;
+                float timeSinceLastTouch = Time.time - _cubes[id].lastTouchedTime;
+                bool gapWasLong = timeSinceLastTouch > TOUCH_GRACE;
+                if (gapWasLong)
+                    _cubes[id].touchHeldTime = 0f;
+
+                _cubes[id].lastTouchedTime = Time.time; // ← stamp AFTER the grace check
 
                 // If touching and no reminder, active voice input
                 bool hasReminder = reminderManager.HasReminder(id);
-                if (!hasReminder && _activeVoiceCube == -1) {
+                 if (_activeVoiceCube == -1) {
                     _activeVoiceCube = id;
-                    voiceManager.BeginReminderCreation(id);               
+                    if (hasReminder) {
+                        voiceManager.BeginDeleteListening(id);
+                    }
+                    else {
+                        voiceManager.BeginReminderCreation(id);
+                    }
                 }
             }
         }
@@ -358,6 +399,7 @@ public class GestureDetection : MonoBehaviour
             voiceManager.CancelListening();
             _activeVoiceCube = -1;
         }
+        UpdateGestureHelp();
     }
 
     // =====================================================
@@ -372,28 +414,28 @@ public class GestureDetection : MonoBehaviour
             return;
         }
 
-        cube.touchHeldTime += Time.deltaTime; // always tick up while touched
+        cube.touchHeldTime += Time.deltaTime;
+        if (cube.touchHeldTime < 0.2f) return;
 
-        if (cube.touchHeldTime < 0.3f)
+        Vector3 pos = cube.transform.position;
+        float horizontalDelta = new Vector2(pos.x - cube.lastSmoothedPosition.x, pos.z - cube.lastSmoothedPosition.z).magnitude;
+
+        if (horizontalDelta > 0.01f) // moved more than 1cm horizontally this frame
         {
-            cube.shakeDirectionChanges = 0;
-            cube.shakeTimer = 0f;
-            return;
+            Vector2 currentDir = new Vector2(pos.x - cube.lastSmoothedPosition.x, pos.z - cube.lastSmoothedPosition.z).normalized;
+            Vector2 lastDir = new Vector2(cube.lastSmoothedVelocity.x, cube.lastSmoothedVelocity.z).normalized;
+
+            if (lastDir.magnitude > 0.001f && Vector2.Dot(currentDir, lastDir) < -0.3f)
+                cube.shakeDirectionChanges++;
+
+            cube.lastSmoothedVelocity = new Vector3(currentDir.x, 0, currentDir.y); // reuse field to store last direction
         }
 
-        Vector3 velocity = cube.filteredRawVelocity;
-        float speed = velocity.magnitude;
-
-        if (speed < 0.5f) return;
-
-        float dot = Vector3.Dot(velocity.normalized, cube.lastRawVelocity.normalized);
-        if (dot < -0.6f)
-            cube.shakeDirectionChanges++;
-        cube.lastRawVelocity = velocity;
-
         cube.shakeTimer += Time.deltaTime;
+        // systemText.text = $"[Shake] id={id} held={cube.touchHeldTime:F2} changes={cube.shakeDirectionChanges} timer={cube.shakeTimer:F2}";
 
-        if (cube.shakeTimer > 0.5f) {
+        if (cube.shakeTimer > 0.6f)
+        {
             if (cube.shakeDirectionChanges >= 3)
                 OnCubeShaken(id);
 
@@ -403,6 +445,8 @@ public class GestureDetection : MonoBehaviour
     }
 
     void OnCubeShaken(int id) {
+        systemText.text = $"[Shaken] id={id} hasReminder={reminderManager.HasReminder(id)} dismissed={_dismissedCubeIDs.Contains(id)}";
+
         bool hasReminder = reminderManager.HasReminder(id);
         bool alreadyDone = completedOrderedTasks.Contains(id) || _dismissedCubeIDs.Contains(id);
 
@@ -421,22 +465,23 @@ public class GestureDetection : MonoBehaviour
                 }
 
                 completedOrderedTasks.Add(id);
+                reminderManager.SetCubeDismissed(id);
                 _justCompletedID = id;
                 _justCompletedTimer = JUST_COMPLETED_DISPLAY_TIME;
-                RefreshGroupUI(group);
+                ForceRebuildGroupUI(group);
                 return;
             }
 
             // Unordered group
             _dismissedCubeIDs.Add(id);
-            RefreshGroupUI(group); // ← was already here, should work
+            reminderManager.SetCubeDismissed(id);
+            ForceRebuildGroupUI(group); // ← was already here, should work
             return;
         }
 
         // Solo cube — no group UI to refresh, just mark it
         _dismissedCubeIDs.Add(id);
-        if (debugText != null)
-            debugText.text = $"Cube {id}: task complete.";
+        reminderManager.SetCubeDismissed(id);
     }
 
     void SetOutline(GameObject cube, bool show, Color? outlineColor = null)
@@ -527,14 +572,38 @@ public class GestureDetection : MonoBehaviour
                 ArUcoTrackingAppCoordinator.m_markerRawPositionDictionary.TryGetValue(id, out Vector3 rawPos))
             {
                 cube.rawVelocity = (rawPos - cube.lastRawPosition) / Time.deltaTime;
-                cube.filteredRawVelocity = Vector3.Lerp(cube.filteredRawVelocity, cube.rawVelocity, 0.2f);
                 cube.lastRawPosition = rawPos;
+
+                // SMOOTH POSITION + VELOCITY
+                if (!cube.smoothingInitialized)
+                {
+                    cube.smoothedPosition = t.position;
+                    cube.lastSmoothedPosition = t.position;
+                    cube.smoothingInitialized = true;
+                }
+                else
+                {
+                    cube.smoothedPosition = Vector3.Lerp(cube.smoothedPosition, t.position, positionSmoothing);
+                }
+
+                cube.smoothedVelocity = (cube.smoothedPosition - cube.lastSmoothedPosition) / Time.deltaTime;
+                cube.lastSmoothedPosition = cube.smoothedPosition;
             }
             else
             {
                 cube.rawVelocity = cube.velocity;
                 cube.lastRawPosition = t.position;
             }
+
+            if (!cube.rotationInitialized) {
+                cube.smoothedRotation = t.rotation;
+                cube.rotationInitialized = true;
+            }
+            else {
+                cube.smoothedRotation = Quaternion.Slerp(cube.smoothedRotation, t.rotation, rotationSmoothing);
+            }
+            
+            t.rotation = cube.smoothedRotation;
         }
     }
 
@@ -544,8 +613,8 @@ public class GestureDetection : MonoBehaviour
 
     void HandleCubeGrouping()
     {
-        if (_activeVoiceCube != -1)
-            return;
+        // if (_activeVoiceCube != -1)
+        //     return;
     
         // COMBINE
         for (int i = 0; i < touchedCubeIDs.Count; i++)
@@ -785,9 +854,17 @@ public class GestureDetection : MonoBehaviour
 
         cube.shakeDirectionChanges = 0;
         cube.shakeTimer = 0f;
-        cube.touchHeldTime = 0f;
+        
+        const float TOUCH_GRACE = 0.4f;
+        float timeSinceLastTouch = Time.time - _cubes[id].lastTouchedTime;
+        bool gapWasLong = timeSinceLastTouch > TOUCH_GRACE;
+        if (gapWasLong)
+            _cubes[id].touchHeldTime = 0f;
+
         cube.lastRawVelocity = Vector3.zero;
-        cube.filteredRawVelocity = Vector3.zero;
+        cube.smoothedVelocity = Vector3.zero;
+        cube.lastSmoothedPosition = cube.smoothedPosition; // prevents velocity spike on resume
+        cube.smoothingInitialized = false;
     }
 
     void UpdateAllGroupSemantics()
@@ -823,7 +900,7 @@ public class GestureDetection : MonoBehaviour
                     group.orderedIDs = group.cubeIDs.ToList();
                 }
 
-                // systemText.text = $"Group {group.groupID} type changed to {group.type}";
+                systemText.text = $"Group {group.groupID} type changed to {group.type}";
                 RefreshGroupUI(group);
             }
         }
@@ -934,62 +1011,7 @@ public class GestureDetection : MonoBehaviour
     void CreateGroupUI(CubeGroup group) {
         RefreshGroupUI(group);
     }
-    // void CreateGroupUI(CubeGroup group)
-    // {
-    //     if (groupUIPrefab == null) return;
 
-    //     Vector3 center = GetGroupCenter(group) + Vector3.up * 0.15f;
-    //     GameObject ui = Instantiate(groupUIPrefab, center, Quaternion.identity);
-    //     group.groupUI = ui;
-    //     RefreshGroupUI(group);
-    // }
-
-    // void RefreshGroupUI(CubeGroup group)
-    // {
-    //     if (group.groupUI == null) return;
-
-    //     bool isActive = group.cubeIDs.Count > 1;
-    //     group.groupUI.SetActive(isActive);
-    //     if (!isActive) return;
-
-    //     // Position above group center
-    //     Vector3 center = GetGroupCenter(group);
-    //     Vector3 awayFromCamera = (center - Camera.main.transform.position).normalized;
-    //     group.groupUI.transform.position = center + awayFromCamera * 0.1f + Vector3.up * 0.25f;
-
-    //     Vector3 toCamera = Camera.main.transform.position - group.groupUI.transform.position;
-    //     group.groupUI.transform.rotation = Quaternion.LookRotation(-toCamera, Vector3.up);
-
-    //     // Build data
-    //     // systemText.text = $"group type for refresh is {group.type}"; 
-    //     GroupUIData data = new GroupUIData
-    //     {
-    //         groupType       = group.type,
-    //         completedIDs    = new HashSet<int>(completedOrderedTasks.Union(_dismissedCubeIDs)),
-    //         justCompletedID = _justCompletedID,
-    //     };
-
-    //     List<int> displayOrder = group.type == GroupType.Ordered ? group.orderedIDs : group.cubeIDs.ToList();
-
-    //     int orderIndex = 0;
-    //     foreach (int id in displayOrder)
-    //     {
-    //         if (!reminderManager.TryGetReminderData(id, out var reminder)) continue;
-
-    //         data.items.Add(new GroupItemData
-    //         {
-    //             cubeId      = id,
-    //             task        = reminder.task,
-    //             icon        = reminder.icon,
-    //             triggerTime = reminder.triggerTime,
-    //             orderIndex  = orderIndex++,
-    //         });
-    //     }
-
-    //     GroupUIManager uiManager = group.groupUI.GetComponent<GroupUIManager>();
-    //     if (uiManager != null)
-    //         uiManager.Refresh(data);
-    // }
     void EnsureCorrectUIPrefab(CubeGroup group)
     {
         if (group.groupUI != null && group.spawnedUIType == group.type)
@@ -1008,12 +1030,6 @@ public class GestureDetection : MonoBehaviour
 
     void RefreshGroupUI(CubeGroup group)
     {
-        if (group.cubeIDs.Count <= 1)
-        {
-            if (group.groupUI != null) group.groupUI.SetActive(false);
-            return;
-        }
-
         EnsureCorrectUIPrefab(group);
         group.groupUI.SetActive(true);
 
@@ -1059,20 +1075,33 @@ public class GestureDetection : MonoBehaviour
     {
         Vector3 sum = Vector3.zero;
         foreach (int id in group.cubeIDs)
-            sum += _cubes[id].transform.position;
+            sum += _cubes[id].smoothedPosition;
         return sum / group.cubeIDs.Count;
     }
 
-    void UpdateRoutines()
-    {
+    void UpdateRoutines() {
         foreach (var group in groups.Values)
         {
-            if (group.groupUI == null) continue;
+            if (group.groupUI == null) {
+                RefreshGroupUI(group); // respawn if missing
+                continue;
+            }
 
-            Vector3 center = GetGroupCenter(group);
-            Vector3 awayFromCamera = (center - Camera.main.transform.position).normalized;
-            group.groupUI.transform.position = center + awayFromCamera * 0.1f + Vector3.up * 0.2f;
-            
+            Vector3 rawCenter = GetGroupCenter(group);
+
+            if (!group.centerInitialized)
+            {
+                group.smoothedCenter = rawCenter;
+                group.centerInitialized = true;
+            }
+            else
+            {
+                group.smoothedCenter = Vector3.Lerp(group.smoothedCenter, rawCenter, groupUIPositionSmoothing);
+            }
+
+            Vector3 awayFromCamera = (group.smoothedCenter - Camera.main.transform.position).normalized;
+            group.groupUI.transform.position = group.smoothedCenter + awayFromCamera * 0.1f + Vector3.up * 0.2f;
+
             Vector3 toCamera = Camera.main.transform.position - group.groupUI.transform.position;
             group.groupUI.transform.rotation = Quaternion.LookRotation(-toCamera, Vector3.up);
         }
@@ -1169,6 +1198,12 @@ public class GestureDetection : MonoBehaviour
 
         GameObject marker = Instantiate(homeMarkerPrefab, anchorPos, Quaternion.identity);
         _homeMarkers[id] = marker;
+        
+        Color cubeColor = reminderManager.GetCubeColor(id);
+        cubeColor.a = 0.5f;
+        Renderer markerRenderer = marker.GetComponentInChildren<Renderer>();
+        if (markerRenderer != null)
+            markerRenderer.material.color = cubeColor;
     }
 
     public void OnRightPointGesture()
@@ -1188,6 +1223,13 @@ public class GestureDetection : MonoBehaviour
 
         GameObject marker = Instantiate(homeMarkerPrefab, anchorPos, Quaternion.identity);
         _homeMarkers[id] = marker;
+
+        Color cubeColor = reminderManager.GetCubeColor(id);
+        cubeColor.a = 0.5f;
+        Renderer markerRenderer = marker.GetComponentInChildren<Renderer>();
+        if (markerRenderer != null)
+            markerRenderer.material.color = cubeColor;
+            
     }
 
     // =====================================================
@@ -1299,5 +1341,65 @@ public class GestureDetection : MonoBehaviour
         if (_activeVoiceCube == cubeId)
             _activeVoiceCube = -1;
     }
+    
+    void ForceRebuildGroupUI(CubeGroup group) {   
+        if (group.groupUI != null)
+            Destroy(group.groupUI);
+        group.groupUI = null;
+
+        // Force EnsureCorrectUIPrefab to respawn
+        group.spawnedUIType = (GroupType)(-1);
+        RefreshGroupUI(group);
+    }
+
+    // Gesture instructions shown when holding onto reminder 
+    void UpdateGestureHelp() {
+        if (gestureHelpUI == null) return;
+
+        if (touchedCubeIDs.Count == 0)
+        {
+            gestureHelpUI.SetActive(false);
+            return;
+        }
+
+        int id = touchedCubeIDs[0];
+
+        if (_gestureHelpShown.Contains(id))
+        {
+            UpdateGestureHelpUIPosition(id);
+            return;
+        }
+
+        float heldTime = _cubes[id].touchHeldTime;
+
+        if (heldTime >= gestureHelpDelay)
+        {
+            ShowGestureHelp(id);
+            _gestureHelpShown.Add(id);
+        }
+
+        UpdateGestureHelpUIPosition(id);
+    }   
+
+    void ShowGestureHelp(int id)  {
+        bool hasReminder = reminderManager.HasReminder(id);
+        if (hasReminder) {
+            gestureHelpUI.SetActive(true);
+        }
+    }
+
+    void UpdateGestureHelpUIPosition(int id) {
+        if (!gestureHelpUI.activeSelf) return;
+
+        Vector3 pos = _cubes[id].smoothedPosition + new Vector3(0, 0.2f, 0);
+
+        gestureHelpUI.transform.position = pos;
+
+        Vector3 camDir = Camera.main.transform.position - pos;
+        gestureHelpUI.transform.rotation = Quaternion.LookRotation(-camDir, Vector3.up);
+    }
+
+
+
 
 }

@@ -41,6 +41,15 @@ public class VoiceManager : MonoBehaviour {
 
     public event Action<int> OnReminderCreated;
 
+    public enum VoiceMode
+    {
+        CreateReminder,
+        DeleteReminder
+    }
+
+    private VoiceMode currentMode = VoiceMode.CreateReminder;
+
+
     void Start() {
         appVoice.VoiceEvents.OnResponse.AddListener(OnWitResponse);
         systemCanvas.SetActive(false); 
@@ -59,6 +68,22 @@ public class VoiceManager : MonoBehaviour {
 
     // On parse, show the preview to the user to verify the parsed task and/or time
     private void OnWitResponse(WitResponseNode response) {
+        if (currentMode == VoiceMode.DeleteReminder) {
+            string intent = "";
+
+            if (response["intents"].Count > 0)
+            {
+                intent = response["intents"][0]["name"];
+            }
+
+            if (intent == "delete_reminder")
+            {
+                DeleteCurrentReminder();
+            }
+
+            return;
+        }
+        
         string task = ""; 
         if (response["entities"]["task:task"].Count == 0) {
             FailedParse();
@@ -148,11 +173,12 @@ public class VoiceManager : MonoBehaviour {
         appVoice.VoiceEvents.OnResponse.RemoveListener(OnWitResponse);
     }
 
-    public void BeginReminderCreation(int cubeId) {
+    public void BeginReminderCreation(int cubeId)
+    {
+        currentMode = VoiceMode.CreateReminder;
         ActivateWit();
-        currentCubeId = cubeId; 
-        if (cubeColors.TryGetValue(cubeId, out Color color))
-        {
+        currentCubeId = cubeId;
+        if (cubeColors.TryGetValue(cubeId, out Color color)) {
             background.color = color;
         }
     }
@@ -161,4 +187,30 @@ public class VoiceManager : MonoBehaviour {
         appVoice.Deactivate();
         appVoice.Activate();
     }
+
+    public void BeginDeleteListening(int cubeId)
+    {
+        currentCubeId = cubeId;
+        currentMode = VoiceMode.DeleteReminder;
+
+        appVoice.Activate();
+    }
+    
+    private void DeleteCurrentReminder()
+    {
+        if (currentCubeId == -1)
+            return;
+
+        reminderManager.DeleteReminder(currentCubeId);
+
+        appVoice.Deactivate();
+
+        currentCubeId = -1;
+        currentTask = "";
+        currentIcon = "";
+        currentReminderTime = null;
+
+        systemCanvas.SetActive(false);
+    }
+
 }

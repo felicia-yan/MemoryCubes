@@ -21,6 +21,9 @@ public class ReminderManager : MonoBehaviour
     [Header("Prefab")]
     [SerializeField] private GameObject reminderPrefab;
     [SerializeField] private GameObject farReminderPrefab;
+    [SerializeField] private GameObject reminderCompletedPrefab;
+    [SerializeField] private GameObject farReminderCompletedPrefab;
+
 
     [SerializeField]
     private float farDistance = 2.0f;
@@ -55,7 +58,6 @@ public class ReminderManager : MonoBehaviour
         { 3, new Color32(170, 255, 0, 170) },
     };
 
-    // Icon constants to customize each task
     public static class ReminderIcons {
         // Default
         public const string Bell = "\uf0f3";
@@ -70,11 +72,14 @@ public class ReminderManager : MonoBehaviour
         public const string WineGlass = "\uf4e3";
         public const string Apple = "\uf5d1";
         public const string ShoppingBasket = "\uf291";
-        public const string Kitchen = "\ue51a"; 
+        public const string Kitchen = "\uf2e7";   // fa-utensils (best FA5 substitute for kitchen)
+        public const string BlenderPhone = "\uf6b6"; // fa-blender (cooking/kitchen)
+        public const string Mortar = "\uf5a1";    // fa-mortar-pestle
 
         // Water / Hydration
-        public const string GlassWater = "\ue4f4";
-        public const string Water = "\uf0f4";
+        public const string GlassWater = "\uf000"; // fa-glass (FA5 solid, closest to glass of water)
+        public const string Tint = "\uf043";       // fa-tint (water drop)
+        public const string Water = "\uf773";      // fa-water
 
         // Health
         public const string Heart = "\uf004";
@@ -82,12 +87,14 @@ public class ReminderManager : MonoBehaviour
         public const string Syringe = "\uf48e";
         public const string Stethoscope = "\uf0f1";
         public const string BandAid = "\uf462";
+        public const string Heartbeat = "\uf21e";  // fa-heartbeat
 
         // Fitness
         public const string Dumbbell = "\uf44b";
         public const string Bicycle = "\uf206";
         public const string Walk = "\uf554";
-        public const string Run = "\uf70c"; 
+        public const string Run = "\uf70c";
+        public const string Swimming = "\uf5c4";   // fa-swimmer
 
         // Sleep
         public const string Bed = "\uf236";
@@ -95,9 +102,14 @@ public class ReminderManager : MonoBehaviour
         public const string AlarmClock = "\uf017";
 
         // Washing
-        public const string Shower = "\uf2cc"; 
-        public const string Sink = "\ue06d"; 
-        public const string Soap = "\ue06e"; 
+        public const string Shower = "\uf2cc";
+        public const string Soap = "\uf06e";       // fa-eye was wrong; fa-soap is FA6 only — use hand-sparkles
+        public const string HandSparkles = "\ue05d"; // fa-hand-sparkles (FA5.13+)
+        public const string Sink = "\uf2cc";       // no FA5 sink; reuse shower as closest substitute
+        public const string Bath = "\uf2cd";       // fa-bath
+
+        // Dishes
+        public const string Utensils2 = "\uf2e7";  // reuse utensils for dishes
 
         // Work / School
         public const string Briefcase = "\uf0b1";
@@ -105,20 +117,23 @@ public class ReminderManager : MonoBehaviour
         public const string Book = "\uf02d";
         public const string GraduationCap = "\uf19d";
         public const string Pencil = "\uf303";
+        public const string ChalkboardTeacher = "\uf51c"; // fa-chalkboard-teacher
 
         // Communication
         public const string Phone = "\uf095";
         public const string Envelope = "\uf0e0";
         public const string Comments = "\uf086";
         public const string Video = "\uf03d";
+        public const string PhoneAlt = "\uf879";   // fa-phone-alt
 
         // Cleaning
         public const string Broom = "\uf51a";
         public const string Trash = "\uf1f8";
         public const string SprayCan = "\uf5bd";
+        public const string Recycle = "\uf1b8";    // fa-recycle
 
         // Laundry
-        public const string Shirt = "\uf553";
+        public const string Shirt = "\uf553";      // fa-tshirt
 
         // Home Maintenance
         public const string House = "\uf015";
@@ -128,18 +143,21 @@ public class ReminderManager : MonoBehaviour
         public const string Lightbulb = "\uf0eb";
         public const string Battery = "\uf240";
         public const string Plug = "\uf1e6";
+        public const string Tools = "\uf7d9";      // fa-tools
 
         // Shopping & Errands
         public const string Cart = "\uf07a";
-        public const string Bag = "\uf290";
+        public const string Bag = "\uf290";        // fa-shopping-bag
         public const string Store = "\uf54e";
         public const string Receipt = "\uf543";
+        public const string Tags = "\uf02c";       // fa-tags
 
         // Finance
         public const string Dollar = "\uf155";
         public const string CreditCard = "\uf09d";
         public const string FileInvoiceDollar = "\uf571";
         public const string PiggyBank = "\uf4d3";
+        public const string MoneyBill = "\uf0d6";  // fa-money-bill
 
         // Travel
         public const string Car = "\uf1b9";
@@ -147,44 +165,52 @@ public class ReminderManager : MonoBehaviour
         public const string Plane = "\uf072";
         public const string Train = "\uf238";
         public const string Suitcase = "\uf0f2";
+        public const string MapMarker = "\uf041";  // fa-map-marker
 
         // Pets
         public const string Paw = "\uf1b0";
         public const string Bone = "\uf5d7";
         public const string Fish = "\uf578";
+        public const string Dog = "\uf6d3";        // fa-dog
+        public const string Cat = "\uf6be";        // fa-cat
 
         // Plants & Garden
         public const string Seedling = "\uf4d8";
         public const string Leaf = "\uf06c";
         public const string Tree = "\uf1bb";
+        public const string Sun = "\uf185";        // moved here, also fits garden
 
         // Technology
         public const string Mobile = "\uf3cd";
         public const string Wifi = "\uf1eb";
-        public const string Desktop = "\uf390";
+        public const string Desktop = "\uf108";    // fa-desktop (was wrong codepoint)
         public const string Keyboard = "\uf11c";
+        public const string TabletAlt = "\uf3fa";  // fa-tablet-alt
 
         // Entertainment
         public const string Music = "\uf001";
         public const string Film = "\uf008";
         public const string Gamepad = "\uf11b";
         public const string Tv = "\uf26c";
+        public const string Headphones = "\uf025"; // fa-headphones
 
         // Family & Social
         public const string User = "\uf007";
         public const string Users = "\uf0c0";
         public const string Child = "\uf1ae";
         public const string Gift = "\uf06b";
+        public const string HandHoldingHeart = "\uf4be"; // fa-hand-holding-heart
 
         // Documents
         public const string Folder = "\uf07b";
         public const string File = "\uf15b";
         public const string Clipboard = "\uf328";
+        public const string FileAlt = "\uf15c";    // fa-file-alt
 
         // Weather
-        public const string Sun = "\uf185";
         public const string Cloud = "\uf0c2";
         public const string Umbrella = "\uf0e9";
+        public const string Snowflake = "\uf2dc";  // fa-snowflake
 
         // Security
         public const string Key = "\uf084";
@@ -204,6 +230,8 @@ public class ReminderManager : MonoBehaviour
         public const string Star = "\uf005";
         public const string Bookmark = "\uf02e";
         public const string LocationPin = "\uf3c5";
+        public const string ThumbsUp = "\uf164";   // fa-thumbs-up
+        public const string Fire = "\uf06d";       // fa-fire
     }
 
     void Update() {
@@ -259,6 +287,7 @@ public class ReminderManager : MonoBehaviour
             if (showFar && reminderData.TryGetValue(cubeId, out Reminder reminder)) {
                 ApplyFarDataToPanel(ui.farPanel, reminder);
             }
+
         }
     }
 
@@ -378,16 +407,7 @@ public class ReminderManager : MonoBehaviour
         else {
             groupedCubes.Remove(cubeId);
         }
-
-        if (activeReminders.TryGetValue(cubeId, out ReminderUI ui)) {
-            if (ui.nearPanel != null)
-                ui.nearPanel.SetActive(!grouped);
-
-            if (ui.farPanel != null)
-                ui.farPanel.SetActive(!grouped);
-        }
     }
-
 
     private void ApplyDataToPanel(
         GameObject panel,
@@ -505,117 +525,129 @@ public class ReminderManager : MonoBehaviour
     }
 
     public static string GetIconForTask(string task) {
-        if (ContainsAny(task,"water", "drink", "hydrate"))
-        return ReminderIcons.GlassWater;
+        // Water / Hydration
+        if (ContainsAny(task, "water", "drink", "hydrate", "hydration"))
+            return ReminderIcons.GlassWater;
 
-        if (ContainsAny(task,
-            "walk", "take a walk",
-            "go outside", "outside", "hike"))
-            return ReminderIcons.Walk;
+        // Dishes / Kitchen cleaning
+        if (ContainsAny(task, "dishes", "wash dishes", "dishwasher", "unload dishwasher", "load dishwasher", "washing up"))
+            return ReminderIcons.Utensils;
 
-        if (ContainsAny(task,
-            "medicine", "medication", "pill",
-            "vitamin", "supplement", "pharmacy", "pharmacist"))
-            return ReminderIcons.Pill;
+        // Cooking / Food prep
+        if (ContainsAny(task, "cook", "cooking", "bake", "baking", "make dinner", "make lunch", "make breakfast", "meal prep", "recipe", "boil", "fry", "roast", "grill"))
+            return ReminderIcons.BlenderPhone;
 
-        if (ContainsAny(task,
-            "laundry", "wash clothes",
-            "dryer", "fold clothes"))
-            return ReminderIcons.Shirt;
-        
-        if (ContainsAny(task,
-            "shower", "take a shower",
-            "take a bath", "take a bath"))
+        // Shower / Bath
+        if (ContainsAny(task, "shower", "take a shower", "take a bath", "bathe", "bathing"))
             return ReminderIcons.Shower;
-        
-        if (ContainsAny(task,
-            "run", "running"))
-            return ReminderIcons.Run;
-        
-        if (ContainsAny(task,
-            "gym", "exercise", "lift weights"))
-            return ReminderIcons.Dumbbell;
-        
-        if (ContainsAny(task,
-            "nap", "sleep", "go to bed", "sleeping", "napping"))
-            return ReminderIcons.Bed;
 
-        if (ContainsAny(task,
-            "wash hands", "soap", "sanitize", "hand sanitizer"))
-            return ReminderIcons.Soap;
-        
-        if (ContainsAny(task,
-            "key", "keys",
-            "lock"))
-            return ReminderIcons.Key;
-        
-        if (ContainsAny(task,
-            "music", "song",
-            "listen"))
-            return ReminderIcons.Music;
-        
-        if (ContainsAny(task,
-            "movie", "film",
-            "theater"))
-            return ReminderIcons.Film;
-        
-        if (ContainsAny(task,
-            "fish", "fishes"))
-            return ReminderIcons.Fish;
-        
-        if (ContainsAny(task,
-            "cat", "dog", "pet"))
-            return ReminderIcons.Paw;
+        // Brush teeth / dental
+        if (ContainsAny(task, "brush", "teeth", "floss", "dental", "dentist", "mouthwash"))
+            return ReminderIcons.Bath;
 
-        if (ContainsAny(task,
-            "meeting", "call", "zoom",
-            "teams", "interview", "meet"))
-            return ReminderIcons.Video;
+        // Laundry
+        if (ContainsAny(task, "laundry", "wash clothes", "dryer", "fold clothes", "iron", "ironing"))
+            return ReminderIcons.Shirt;
 
-        if (ContainsAny(task,
-            "homework", "study", "class",
-            "exam", "assignment", "test", "quiz"))
-            return ReminderIcons.Book;
-
-        if (ContainsAny(task,
-            "work", "office", "project",
-            "deadline"))
-            return ReminderIcons.Briefcase;
-
-        if (ContainsAny(task,
-            "pay", "bill", "rent",
-            "mortgage", "invoice", "payment", "invoice"))
-            return ReminderIcons.FileInvoiceDollar;
-
-        if (ContainsAny(task,
-            "vacuum", "clean", "mop",
-            "sweep", "wipe"))
+        // Vacuum / Sweeping / Mopping
+        if (ContainsAny(task, "vacuum", "vacuuming", "sweep", "sweeping", "mop", "mopping", "wipe", "scrub"))
             return ReminderIcons.Broom;
 
-        if (ContainsAny(task,
-            "dog", "cat", "pet",
-            "feed pet"))
+        // General cleaning
+        if (ContainsAny(task, "clean", "cleaning", "tidy", "tidying", "declutter", "organize"))
+            return ReminderIcons.SprayCan;
+
+        // Trash / Recycling
+        if (ContainsAny(task, "trash", "garbage", "recycle", "recycling", "bin", "take out"))
+            return ReminderIcons.Trash;
+
+        // Wash hands / Sanitize
+        if (ContainsAny(task, "wash hands", "soap", "sanitize", "hand sanitizer"))
+            return ReminderIcons.Soap;
+
+        // Medicine
+        if (ContainsAny(task, "medicine", "medication", "pill", "vitamin", "supplement", "pharmacy", "pharmacist", "dose", "inhaler"))
+            return ReminderIcons.Pill;
+
+        // Walk
+        if (ContainsAny(task, "walk", "take a walk", "go outside", "outside", "hike", "stroll"))
+            return ReminderIcons.Walk;
+
+        // Run
+        if (ContainsAny(task, "run", "running", "jog", "jogging"))
+            return ReminderIcons.Run;
+
+        // Gym / Exercise
+        if (ContainsAny(task, "gym", "exercise", "workout", "lift weights", "weights", "yoga", "stretch", "pilates", "cycling"))
+            return ReminderIcons.Dumbbell;
+
+        // Sleep / Nap
+        if (ContainsAny(task, "nap", "sleep", "go to bed", "sleeping", "napping", "rest", "bedtime"))
+            return ReminderIcons.Bed;
+
+        // Keys / Lock
+        if (ContainsAny(task, "key", "keys", "lock", "unlock"))
+            return ReminderIcons.Key;
+
+        // Music
+        if (ContainsAny(task, "music", "song", "listen", "playlist", "podcast"))
+            return ReminderIcons.Music;
+
+        // Movie / Film
+        if (ContainsAny(task, "movie", "film", "theater", "cinema", "watch"))
+            return ReminderIcons.Film;
+
+        // TV / Shows
+        if (ContainsAny(task, "tv", "watch tv", "television", "show", "episode", "netflix", "stream"))
+            return ReminderIcons.Tv;
+
+        // Pets
+        if (ContainsAny(task, "dog", "cat", "pet", "feed pet", "walk dog", "litter", "fish", "bird", "hamster", "rabbit"))
             return ReminderIcons.Paw;
 
-        if (ContainsAny(task,
-            "water plant", "garden",
-            "plants", "soil", "outdoors"))
+        // Plants / Garden
+        if (ContainsAny(task, "water plant", "garden", "plants", "soil", "outdoors", "weed", "weeding", "mow", "lawn", "flowers"))
             return ReminderIcons.Seedling;
 
-        if (ContainsAny(task,
-            "shopping", "groceries",
-            "buy", "shop", "cart"))
+        // Meeting / Call
+        if (ContainsAny(task, "meeting", "call", "zoom", "teams", "interview", "meet", "conference", "webinar"))
+            return ReminderIcons.Video;
+
+        // Study / Homework
+        if (ContainsAny(task, "homework", "study", "class", "exam", "assignment", "test", "quiz", "lecture", "read", "reading"))
+            return ReminderIcons.Book;
+
+        // Work
+        if (ContainsAny(task, "work", "office", "project", "deadline", "email", "report", "presentation"))
+            return ReminderIcons.Briefcase;
+
+        // Bills / Finance
+        if (ContainsAny(task, "pay", "bill", "rent", "mortgage", "invoice", "payment", "tax", "insurance", "bank", "budget"))
+            return ReminderIcons.FileInvoiceDollar;
+
+        // Shopping / Groceries
+        if (ContainsAny(task, "shopping", "groceries", "buy", "shop", "cart", "supermarket", "store", "market", "errands"))
             return ReminderIcons.Cart;
 
-        if (ContainsAny(task,
-            "package", "delivery",
-            "pickup"))
+        // Package / Delivery
+        if (ContainsAny(task, "package", "delivery", "pickup", "parcel", "mail", "post"))
             return ReminderIcons.Box;
-        
-        if (ContainsAny(task,
-            "tv", "watch tv",
-            "television", "show"))
-            return ReminderIcons.Tv;
+
+        // Car / Travel
+        if (ContainsAny(task, "car", "drive", "driving", "gas", "fuel", "oil change", "service", "parking"))
+            return ReminderIcons.Car;
+
+        // Doctor / Health appointment
+        if (ContainsAny(task, "doctor", "appointment", "checkup", "hospital", "clinic", "therapy", "therapist"))
+            return ReminderIcons.Stethoscope;
+
+        // Phone
+        if (ContainsAny(task, "phone", "call", "text", "message", "contact", "ring"))
+            return ReminderIcons.Phone;
+
+        // Home maintenance
+        if (ContainsAny(task, "fix", "repair", "maintenance", "install", "replace", "battery", "lightbulb", "bulb", "plumber", "electrician"))
+            return ReminderIcons.Wrench;
 
         return ReminderIcons.Star;
     }
@@ -628,4 +660,68 @@ public class ReminderManager : MonoBehaviour
         foreach (int id in cubeIds)
             SetCubeGrouped(id, !visible);
     }
+
+    public void SetCubeDismissed(int cubeId) {
+        if (!activeReminders.TryGetValue(cubeId, out ReminderUI ui))
+            return;
+
+        reminderData.TryGetValue(cubeId, out Reminder data);
+
+        Vector3 spawnPos = transform.position + Vector3.up * heightOffset;
+
+        if (ArUcoTrackingAppCoordinator.m_markerGameObjectDictionary.TryGetValue(cubeId, out GameObject cubeObj) && cubeObj != null)
+        {
+            spawnPos = cubeObj.transform.position + Vector3.up * heightOffset;
+        }
+
+        // cache old panels
+        GameObject oldNear = ui.nearPanel;
+        GameObject oldFar = ui.farPanel;
+
+        // instantiate replacements in same position/rotation
+        GameObject newNear = null;
+        GameObject newFar = null;
+
+        if (reminderCompletedPrefab != null && oldNear != null)
+        {
+            newNear = Instantiate(reminderCompletedPrefab, oldNear.transform.position, oldNear.transform.rotation, oldNear.transform.parent);
+            ApplyDataToPanel(newNear, data);
+        }
+
+        if (farReminderCompletedPrefab != null && oldFar != null)
+        {
+            newFar = Instantiate(farReminderCompletedPrefab, oldFar.transform.position, oldFar.transform.rotation, oldFar.transform.parent);
+            ApplyFarDataToPanel(newFar, data);
+        }
+
+        // keep canvas sorting consistent
+        if (newNear != null)
+        {
+            Canvas c = newNear.GetComponent<Canvas>();
+            if (c != null) c.sortingOrder = 10;
+        }
+
+        if (newFar != null)
+        {
+            Canvas c = newFar.GetComponent<Canvas>();
+            if (c != null) c.sortingOrder = 10;
+        }
+
+        // destroy old panels AFTER replacement
+        if (oldNear != null) Destroy(oldNear);
+        if (oldFar != null) Destroy(oldFar);
+
+        // replace references in-place
+        ui.nearPanel = newNear;
+        ui.farPanel = newFar;
+
+        // update canvas groups if used
+        ui.nearGroup = newNear ? newNear.GetComponent<CanvasGroup>() : null;
+        ui.farGroup = newFar ? newFar.GetComponent<CanvasGroup>() : null;
+    }
+
+    public Color GetCubeColor(int cubeId) {
+        return cubeColors.TryGetValue(cubeId, out Color c) ? c : Color.white;
+    }
+
 }

@@ -83,21 +83,32 @@ public class StepsGroupUI : GroupUIBase
         ForceRelayout();
     }
 
-    void ApplyNextCell(GameObject cell, GroupItemData item)
-    {
-        SetTMP(cell, "NumberText", $"{item.orderIndex + 1}");
-        SetTMP(cell, "IconText",   item.icon);
-        SetTMP(cell, "TaskText",   item.task);
+    void ApplyNextCell(GameObject cell, GroupItemData item) {
+        // Number text (nested under Number/NumberText)
+        SetTMP(cell, "Number/NumberText", $"{item.orderIndex + 1}");
+        SetTMP(cell, "IconText",          item.icon);
+        SetTMP(cell, "TaskText",          item.task);
 
-        Image bg = cell.transform.Find("Background")?.GetComponent<Image>();
-        if (bg != null && CubeColorsPastel.TryGetValue(item.cubeId, out Color32 c))
-            bg.color = c;
+        // Pastel background for the whole cell
+        Image cellBg = cell.GetComponent<Image>();
+        if (cellBg != null && CubeColorsPastel.TryGetValue(item.cubeId, out Color32 pastel))
+            cellBg.color = pastel;
 
+        // Vivid accent for icon + task text
         if (CubeColors.TryGetValue(item.cubeId, out Color32 accent))
         {
-            SetTMPColor(cell, "NumberText", accent);
-            SetTMPColor(cell, "IconText",   accent);
-            SetTMPColor(cell, "TaskText",   accent);
+            SetTMPColor(cell, "Number/NumberText", Color.white);
+            SetTMPColor(cell, "IconText",          accent);
+            SetTMPColor(cell, "TaskText",          Color.black);
+        }
+
+        // Number circle background (the Image on the Number object itself)
+        Transform numberObj = cell.transform.Find("Number");
+        if (numberObj != null)
+        {
+            Image circleBg = numberObj.GetComponent<Image>();
+            if (circleBg != null && CubeColors.TryGetValue(item.cubeId, out Color32 accentForCircle))
+                circleBg.color = accentForCircle;
         }
     }
 
