@@ -56,6 +56,7 @@ public class ReminderManager : MonoBehaviour
         { 1, new Color32(255, 0, 220, 170) },
         { 2, new Color32(0, 180, 225, 170) },
         { 3, new Color32(170, 255, 0, 170) },
+        { 7, new Color32(250, 122,   3, 255) },
     };
 
     public static class ReminderIcons {

@@ -4231,6 +4231,8 @@ MonoBehaviour:
     gameObject: {fileID: 1681941506}
   - markerId: 3
     gameObject: {fileID: 639398728}
+  - markerId: 7
+    gameObject: {fileID: 1268520896}
   m_debugRenderer: {fileID: 1676941956}
 --- !u!1 &1067514001
 GameObject:
@@ -5077,7 +5079,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1268520897
 Transform:
   m_ObjectHideFlags: 0

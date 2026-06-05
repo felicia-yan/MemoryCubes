@@ -20,6 +20,7 @@ public class ToDoGroupUI : GroupUIBase
         { 1, new Color32(255,   0, 220, 255) },
         { 2, new Color32(  0, 180, 225, 255) },
         { 3, new Color32(170, 255,   0, 255) },
+        { 7, new Color32(250, 122,   3, 255) },
     };
 
     private static readonly Dictionary<int, Color32> CubeColorsPastel = new()
@@ -28,6 +29,7 @@ public class ToDoGroupUI : GroupUIBase
         { 1, new Color32(255, 179, 246, 255) },
         { 2, new Color32(153, 229, 245, 255) },
         { 3, new Color32(210, 255, 153, 255) },
+        { 7, new Color32(255, 186, 122, 255) },
     };
 
     public override void Refresh(GroupUIData data)
