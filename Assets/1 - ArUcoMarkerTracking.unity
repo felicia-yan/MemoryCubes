@@ -1265,7 +1265,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!82 &325655188
 AudioSource:
   m_ObjectHideFlags: 0
@@ -5047,7 +5047,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TryAR.MarkerTracking.ArUcoMarkerTracking
   _dictionaryId: 0
   _markerLength: 0.025
-  _poseFilterCoefficient: 0.4
+  _poseFilterCoefficient: 0.35
   _divideNumber: 1
 --- !u!4 &1254158199
 Transform:
@@ -5353,6 +5353,8 @@ MonoBehaviour:
   systemText: {fileID: 220912320}
   gestureHelpUI: {fileID: 1816369397}
   gestureHelpDelay: 6
+  connectionBreakTime: 0.15
+  connectionBuildTime: 0.2
 --- !u!114 &1412759789 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 4423976141364552412, guid: 0a7d2469f24041c4284c66706f84c45e, type: 3}
@@ -7768,7 +7770,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 60.200005, y: -74.7008}
-  m_SizeDelta: {x: 0, y: 0}
+  m_SizeDelta: {x: -111.400024, y: 0}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &2096146804
 MonoBehaviour:
@@ -9159,7 +9161,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   head: {fileID: 532409911}
   followDistance: 0.8
-  verticalOffset: 0.35
+  verticalOffset: 0.28
   moveThreshold: 0.5
   moveSpeed: 2
   rotationThreshold: 45

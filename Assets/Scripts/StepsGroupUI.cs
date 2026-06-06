@@ -29,6 +29,8 @@ public class StepsGroupUI : GroupUIBase
         { 1, new Color32(255,   0, 220, 255) },
         { 2, new Color32(  0, 180, 225, 255) },
         { 3, new Color32(170, 255,   0, 255) },
+        { 7, new Color32(250, 122,   3, 255) },
+
     };
 
     private static readonly Dictionary<int, Color32> CubeColorsPastel = new()
@@ -37,7 +39,7 @@ public class StepsGroupUI : GroupUIBase
         { 1, new Color32(255, 179, 246, 255) },
         { 2, new Color32(153, 229, 245, 255) },
         { 3, new Color32(210, 255, 153, 255) },
-        { 7, new Color32(250, 122,   3, 255) },
+        { 7, new Color32(255, 186, 122, 255) },
     };
 
     public override void Refresh(GroupUIData data)
@@ -96,11 +98,11 @@ public class StepsGroupUI : GroupUIBase
             cellBg.color = pastel;
 
         // Vivid accent for icon + task text
+        SetTMPColor(cell, "TaskText",          Color.black);
+        SetTMPColor(cell, "Number/NumberText", Color.white);
         if (CubeColors.TryGetValue(item.cubeId, out Color32 accent))
         {
-            SetTMPColor(cell, "Number/NumberText", Color.white);
             SetTMPColor(cell, "IconText",          accent);
-            SetTMPColor(cell, "TaskText",          Color.black);
         }
 
         // Number circle background (the Image on the Number object itself)

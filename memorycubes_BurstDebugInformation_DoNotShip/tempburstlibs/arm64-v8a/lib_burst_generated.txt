@@ -12,6 +12,7 @@ Library: /Users/feiyan/Desktop/MemoryCubes/Temp/BurstOutput/tempburstlibs/arm64-
 --float-mode=Fast
 --generate-link-xml=Temp/burst.link.xml
 --temp-folder=/Users/feiyan/Desktop/MemoryCubes/Temp/Burst
+--debug=Full
 --key-folder=/Applications/Unity/Hub/Editor/6000.3.12f1/PlaybackEngines/AndroidPlayer
 --decode-folder=/Users/feiyan/Desktop/MemoryCubes/Library/Burst
 --output=/Users/feiyan/Desktop/MemoryCubes/Temp/BurstOutput/tempburstlibs/arm64-v8a/lib_burst_generated
@@ -30,6 +31,7 @@ Library: /Users/feiyan/Desktop/MemoryCubes/Temp/BurstOutput/tempburstlibs/arm64-
 --target-framework=NetFramework
 --generate-link-xml=Temp/burst.link.xml
 --temp-folder=/Users/feiyan/Desktop/MemoryCubes/Temp/Burst
+--debug=Full
 --key-folder=/Applications/Unity/Hub/Editor/6000.3.12f1/PlaybackEngines/AndroidPlayer
 --decode-folder=/Users/feiyan/Desktop/MemoryCubes/Library/Burst
 --output=/Users/feiyan/Desktop/MemoryCubes/Temp/BurstOutput/tempburstlibs/arm64-v8a/lib_burst_generated
